@@ -9,3 +9,4 @@ env
 /docs/*
 pyoscvideo.code-workspace
 /.idea/*
+build
