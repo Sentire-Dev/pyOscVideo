@@ -29,7 +29,3 @@ def main():
     """Start the application."""
     app = App(sys.argv)
     app.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    main()

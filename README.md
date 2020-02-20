@@ -17,6 +17,12 @@
 * activate virtual environment
         source .venv/bin/activate
 
+* Install dependencies (requirements.txt): 
+
+        pip install -R requirements.txt 
+
+* **OR manually**
+
 * Install Cython (requirement for pyliblo)
 
         python3 -m pip install Cython --install-option="--no-cython-compile"
@@ -38,7 +44,13 @@ echo /usr/local/opt/opencv/lib/python3.7/site-packages >> /usr/local/lib/python3
         pip install pyqt5
 
 
-* install pyoscvideo
-        pip install -e .
-        
 pyuic5 pyoscvideo/ressources/main_view.ui -o pyoscvideo/views/main_view_ui.py
+
+
+* run with:
+
+        pip install -e .
+        pyoscvideo
+
+
+
