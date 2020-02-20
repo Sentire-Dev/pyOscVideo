@@ -1,0 +1,11 @@
+*.mpeg4
+*.avi
+*.pyc
+*.log*
+*.egg-info
+.venv/*
+.vscode/*
+env
+/docs/*
+pyoscvideo.code-workspace
+/.idea/*
