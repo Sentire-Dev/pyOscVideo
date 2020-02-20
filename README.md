@@ -3,9 +3,6 @@
 ## Install notes
 
 ### Mac
-* Install liblo
-        brew install liblo
-
 * Install python 3
 
 * create virtual environment
@@ -22,15 +19,6 @@
         pip install -R requirements.txt 
 
 * **OR manually**
-
-* Install Cython (requirement for pyliblo)
-
-        python3 -m pip install Cython --install-option="--no-cython-compile"
-
-* Install pyliblo
-        pip install pyliblo
-
-* Install pyliblo (see https://github.com/dsacre/pyliblo)
 
 * Install opencv:
 

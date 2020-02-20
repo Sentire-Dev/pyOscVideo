@@ -1,6 +1,4 @@
-Cython==0.29.15
 numpy==1.18.1
 opencv-python==4.2.0.32
-pyliblo==0.10.0
 PyQt5==5.14.1
 PyQt5-sip==12.7.1

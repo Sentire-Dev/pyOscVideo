@@ -1,5 +1,5 @@
 # pylint: disable=trailing-whitespace
-import liblo
+# import liblo
 from PyQt5.QtCore import QObject, pyqtSlot
 
 class OscController(QObject):

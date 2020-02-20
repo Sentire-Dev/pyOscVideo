@@ -10,7 +10,7 @@ import logging
 import queue
 import time
 
-import liblo
+# import liblo
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 from cv2.cv2 import VideoWriter_fourcc
