@@ -35,7 +35,7 @@
         "class": "logging.handlers.RotatingFileHandler",
         "level": "INFO",
         "formatter": "simple",
-        "filename": "./logging/logs/info.log",
+        "filename": "pyoscvideo/logging/logs/info.log",
         "maxBytes": 10485760,
         "backupCount": 20,
         "encoding": "utf8"
@@ -45,7 +45,7 @@
         "class": "logging.handlers.RotatingFileHandler",
         "level": "ERROR",
         "formatter": "simple",
-        "filename": "./logging/logs/errors.log",
+        "filename": "pyoscvideo/logging/logs/errors.log",
         "maxBytes": 10485760,
         "backupCount": 3,
         "encoding": "utf8"
@@ -55,7 +55,7 @@
         "class": "logging.handlers.RotatingFileHandler",
         "level": "DEBUG",
         "formatter": "simple",
-        "filename": "./logging/logs/debug.log",
+        "filename": "pyoscvideo/logging/logs/debug.log",
         "maxBytes": 10485760,
         "backupCount": 3,
         "encoding": "utf8"

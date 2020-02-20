@@ -87,6 +87,8 @@ class MainController(QObject):
         self._writer = None
         self._init_writer()
         self.frame_rate = 0
+        self._camera_reader.set_camera(self._camera_selector.selected_camera)
+        self.start_capturing()
 
     @property
     def read_queue(self):

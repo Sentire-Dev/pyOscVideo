@@ -4,7 +4,7 @@ import json
 import cv2
 
 
-def setup_logging(default_path='./logging/logging_settings.json',
+def setup_logging(default_path='pyoscvideo/logging/logging_settings.json',
                   default_level=logging.INFO, ):
     """Set up logging configuration."""
     path = default_path

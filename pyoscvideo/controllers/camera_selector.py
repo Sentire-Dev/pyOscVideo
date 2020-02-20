@@ -47,8 +47,10 @@ class CameraSelector(QObject):
             p = re.compile(r"\s{4}([^\\n]+):\\n\\n")
             device_list = p.findall(str(output))
             self._logger.info("Found %s cameras", len(device_list))
-            for i, item in enumerate(device_list):
-                self._logger.info("%s: %s", i, item)
+            for camera_id, camera_name in enumerate(device_list):
+                camera_name_inc = self.add_to_dict_with_key_increment(self._camera_dict, camera_name, camera_id)
+                camera_names.append(camera_name_inc)
+                self._logger.info("[%s] %s", camera_id, camera_name)
 
         if platform.system() == "Linux":
             dir_str = '/sys/class/video4linux/'
@@ -61,8 +63,8 @@ class CameraSelector(QObject):
                 #self._logger.info("[%s] %s", camera_id, camera_name)
                 camera_name_inc = self.add_to_dict_with_key_increment(self._camera_dict, camera_name, camera_id)
                 camera_names.append(camera_name_inc)
-            camera_names.sort()
-            self._model.cameras = camera_names
+        camera_names.sort()
+        self._model.cameras = camera_names
 
     @property
     def selected_camera(self):
@@ -72,6 +74,7 @@ class CameraSelector(QObject):
             int -- the device id
         """
         return self._camera_dict[self._model.selection]
+
 
     def add_to_dict_with_key_increment(self, dictionary, key, value):
         """Add a key value pair to a given dictionary.
