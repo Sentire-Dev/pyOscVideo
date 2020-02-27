@@ -5,7 +5,6 @@ import sys
 import re
 import logging
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
-from pyoscvideo.model.camera_selection_model import CameraSelectionModel
 
 if platform.system() == "Linux":
     import pyudev
