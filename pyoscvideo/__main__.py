@@ -7,7 +7,7 @@ TODO:
 """
 import sys
 from PyQt5.QtWidgets import QApplication
-from pyoscvideo.model.model import Model
+from pyoscvideo.model.model import Recorder
 from pyoscvideo.controllers.main_ctrl import MainController
 from pyoscvideo.views.main_view import MainView
 
@@ -18,9 +18,9 @@ class App(QApplication):
     def __init__(self, sys_argv):
         """Init the QApplication."""
         super(App, self).__init__(sys_argv)
-        self.model = Model()
-        self.main_view = MainView(self.model.frame_rate)
-        self.main_controller = MainController(self.model, self.main_view)
+        self.model = Recorder()
+        self.main_controller = MainController(self.model)
+        self.main_view = MainView(self.main_controller)
 
         self.main_view.show()
 

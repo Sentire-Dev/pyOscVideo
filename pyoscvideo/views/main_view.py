@@ -16,31 +16,87 @@ class MainView(QMainWindow):
     start_capturing = pyqtSignal()
     should_quit = pyqtSignal()
 
-    def __init__(self, frame_rate):
+    def __init__(self, controller):
         super().__init__()
         self._logger = logging.getLogger(__name__+".MainView")
-        
+
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
-        self._ui.closeEvent = self.closeEvent 
-        self._frame_rate = frame_rate
+        self._ui.closeEvent = self.closeEvent
+
+        self._controller = controller
+        self._model = self._controller._model
+        self._camera_list = []
+
+
+        # Connect signals from controller to update the interface dynamically
+        self._controller._camera_selector._model.camera_added.connect(self._add_camera_comboBox)
+        self._controller._camera_selector._model.camera_removed.connect(self._remove_camera_comboBox)
+        self._controller._camera_selector._model.selection_changed.connect(self._current_camera_changed)
+        self._controller._fps_update_thread.updateFpsLabel.connect(self._update_fps_label)
+        self._controller._model.status_msg_changed.connect(self._set_status_msg)
+        # self._controller._camera_selector.camera_list_cleared.connect(self._ui.camera_selection_comboBox.clear)
+
+        # Connect actions in UI to the controller
+        # self._ui.camera_selection_comboBox.activated.connect(self._user_change_current_camera)
+        self._ui.camera_selection_comboBox.currentIndexChanged.connect(self._change_current_camera)
+        self._ui.recordButton.clicked.connect(self._controller.toggle_recording)
+        self.should_quit.connect(self._controller.cleanup)
+
+        for number, name in self._controller._camera_selector._model._cameras.items():
+            self._add_camera_comboBox({'number': number, 'name': name})
+
         self.setStatusBar(self._ui.statusbar)
 
+    @pyqtSlot(int)
+    def _change_current_camera(self, index):
+        number = self._camera_list[index]['number']
+        self._logger.info(f"Changing current camera to: {index}")
+        self._controller._camera_selector._model.selection = self._camera_list[index]['number']
+
+    @pyqtSlot(int)
+    def _current_camera_changed(self, device_id):
+        self._logger.info(f"Current camera changed to {device_id}")
+        try:
+            device_info = {'number': device_id, 'name': self._controller._camera_selector._model._cameras[device_id]}
+        except KeyError:
+            self._logger.warn(f"Tried to choose an invalid camera with id: {device_id}")
+            return
+        idx = self._camera_list.index(device_info)
+        if idx != self._ui.camera_selection_comboBox:
+            # check if we need to update ourselves
+            self._ui.camera_selection_comboBox.setCurrentIndex(idx)
+            self._controller._image_update_thread.change_pixmap.connect(self._on_new_frame)
+
+    @pyqtSlot(object)
+    def _add_camera_comboBox(self, camera_info):
+        self._camera_list.append(camera_info)
+        self._camera_list.sort(key=lambda e: e['number'])
+        idx = self._camera_list.index(camera_info)
+        self._ui.camera_selection_comboBox.insertItem(idx, camera_info['name'])
+
+    @pyqtSlot(object)
+    def _remove_camera_comboBox(self, camera_info):
+        idx = self._camera_list.index(camera_info)
+        del self._camera_list[idx]
+        self._ui.camera_selection_comboBox.removeItem(idx)
+
     @pyqtSlot(str)
-    def set_status_msg(self, msg):
+    def _set_status_msg(self, msg):
         self._ui.statusbar.setEnabled(True)
         self._logger.debug("Status changed: %s", msg)
         self._ui.statusbar.showMessage(msg)
 
     @pyqtSlot(QImage)
-    def on_new_frame(self, image):
+    def _on_new_frame(self, image):
         """set the image in the main windows
         """
         self._logger.debug("New frame")
         # TODO: scaled should not be called here as it is very expensive
+        #       maybe check Qt.FastTransformation?
         self._ui.imageLabel.setPixmap(QPixmap.fromImage(image).scaled(
             self._ui.imageLabel.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        
+
         #time_elapsed = time.time() - self._model.last_update
         #self._model.last_update = time.time()
         #print("Time elapsed: " + str(time_elapsed))
@@ -51,7 +107,7 @@ class MainView(QMainWindow):
     def on_capture_button_clicked(self):
         self.start_capturing()
 
-    # def resizeEvent(self, event): 
+    # def resizeEvent(self, event):
     #     print("resized")
     #     size = self._ui.imageLabel.size()
     #     img = self._ui.imageLabel.pixmap()
@@ -60,7 +116,7 @@ class MainView(QMainWindow):
     #             self._ui.imageLabel.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     @pyqtSlot(float)
-    def update_fps_label(self, fps):
+    def _update_fps_label(self, fps):
         self._ui.frame_rate_label.setText("Fps: " + str(round(fps, 1)))
 
     def button_clicked(self):
@@ -68,8 +124,6 @@ class MainView(QMainWindow):
         """
         print('Button Clicked')
         self.start_capturing()
-
-
 
     def closeEvent(self, event):
         print("event")
@@ -84,9 +138,3 @@ class MainView(QMainWindow):
 
     def on_quit(self):
         self.should_quit.emit
-
-
-
-
-
-

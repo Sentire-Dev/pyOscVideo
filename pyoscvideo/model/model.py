@@ -1,69 +1,58 @@
 from PyQt5.QtCore import QObject, pyqtSignal
+import logging
 
 
-class Model(QObject):
+class BaseModel(QObject):
+    def __new__(cls):
+        # Sets a dynamic `_signals` class variable, an array
+        # with all attributes monitored with signals by this class
+        cls._signals = [
+            attr[:attr.rfind("_changed")] for attr in
+                 cls.__dict__.keys() if attr.endswith("_changed") and
+                    isinstance(getattr(cls, attr), pyqtSignal) ]
+        return super().__new__(cls)
+
+    def __setattr__(self, attr, value):
+        # Checks if attribute should emit a signal when being set.
+        if attr in self._signals:
+            getattr(self, attr + "_changed").emit(value)
+        return super().__setattr__(attr, value)
+
+
+class Recorder(BaseModel):
     is_capturing_changed = pyqtSignal(bool)
+    frame_rate_changed = pyqtSignal(float)
     status_msg_changed = pyqtSignal(str)
-    even_odd_changed = pyqtSignal(str)
-    enable_reset_changed = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
-        self._is_capturing = False
-        self._even_odd = ''
-        self._enable_reset = False
+        self._logger = logging.getLogger(__name__ + ".Recorder")
         self._status_msg = ''
-        self._frame_rate = 30
+        self.is_capturing = False
+        self.frame_rate = 30
         self.frame_counter = 0
         self.last_update = 0
 
-    @property
-    def frame_rate(self):
-        """Return the frame rate."""
-        return self._frame_rate
 
-    @frame_rate.setter
-    def frame_rate(self, fps):
-        """Set the frame rate."""
-        self._frame_rate = fps
+class CameraSelectorModel(BaseModel):
+    selection_changed = pyqtSignal(int)
+    camera_list_cleared = pyqtSignal()
+    camera_removed = pyqtSignal(object)
+    camera_added = pyqtSignal(object)
 
+    def __init__(self):
+        super().__init__()
+        self._logger = logging.getLogger(__name__ + ".CameraSelectorModel")
+        self._cameras = {}
+        self.selection = None
 
-    @property
-    def is_capturing(self):
-        """Return the capturing status."""
-        return self._is_capturing
+    def add_camera(self, number, name):
+        self._logger.info(f"New camera added: {name} - {number}")
+        self._cameras[number] = name
+        self.camera_added.emit({'number': number, 'name': name})
 
-    @is_capturing.setter
-    def is_capturing(self, value):
-        """Set the capturing status."""
-        self._is_capturing = value
-        self.is_capturing_changed.emit(value)
-
-    @property
-    def status_msg(self):
-        """Return the status message."""
-        return self._status_msg
-
-    @status_msg.setter
-    def status_msg(self, msg):
-        """Set the status message."""
-        self._status_msg = msg
-        self.status_msg_changed.emit(msg)
-
-    @property
-    def even_odd(self):
-        return self._even_odd
-
-    @even_odd.setter
-    def even_odd(self, value):
-        self._even_odd = value
-        self.even_odd_changed.emit(value)
-
-    @property
-    def enable_reset(self):
-        return self._enable_reset
-
-    @enable_reset.setter
-    def enable_reset(self, value):
-        self._enable_reset = value
-        self.enable_reset_changed.emit(value)
+    def remove_camera(self, number):
+        name = self._cameras[number]
+        self._logger.info(f"Camera removed: {name} - {number}")
+        del self._cameras[number]
+        self.camera_removed.emit({'number': number, 'name': name})

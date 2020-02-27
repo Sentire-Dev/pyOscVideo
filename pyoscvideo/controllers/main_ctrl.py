@@ -19,7 +19,7 @@ from pyoscvideo.controllers.camera_reader import CameraReader
 from pyoscvideo.controllers.camera_selector import CameraSelector
 from pyoscvideo.controllers.video_writer import VideoWriter
 from pyoscvideo.helpers import helpers
-from pyoscvideo.model.camera_selection_model import CameraSelectionModel
+from pyoscvideo.model.model import CameraSelectorModel
 
 # TODO: Global variables should not be defined here
 #       instead use Settings Class
@@ -49,7 +49,7 @@ class MainController(QObject):
     """
     _camera_reader: CameraReader
 
-    def __init__(self, model, view):
+    def __init__(self, model):
         """Init the main controller.
         
         Arguments:
@@ -63,32 +63,22 @@ class MainController(QObject):
         self._logger = logging.getLogger(__name__ + ".MainController")
         self._logger.info("Initializing")
         self._model = model
-        self._main_view = view
         self._recording = False
         self._capturing = False
-        # self._main_view._ui.camera_selection_comboBox.currentIndexChanged.connect()
-        self._main_view._ui.recordButton.clicked.connect(self.toggle_recording)
-        self._main_view.should_quit.connect(self.cleanup)
-        self._model.status_msg_changed.connect(self._main_view.set_status_msg)
         self._image_update_thread = None
         self._source = None
-        # self._camera_reader = None
+        self._camera_reader = None
         self.read_queue = queue.LifoQueue()
         self._write_queue = queue.LifoQueue()
         self._init_reader()
 
-        self._camera_selector_model = CameraSelectionModel()
-        self._camera_selector = CameraSelector(self._camera_selector_model,
-                                               self._main_view._ui.camera_selection_comboBox)
-        self._camera_selector.selection_changed.connect(self._camera_reader.set_camera)
-        self._camera_selector.selection_changed.connect(self.on_camera_selection_changed)
+        self._camera_selector = CameraSelector(CameraSelectorModel())
+        self._camera_selector._model.selection_changed.connect(self.on_camera_selection_changed)
         self._fps_update_thread = None
         self._start_fps_update_thread()
         self._writer = None
         self._init_writer()
         self.frame_rate = 0
-        self._camera_reader.set_camera(self._camera_selector.selected_camera)
-        self.start_capturing()
 
     @property
     def read_queue(self):
@@ -101,9 +91,10 @@ class MainController(QObject):
         # TODO type check
         self.__read_queue = read_queue
 
-    def on_camera_selection_changed(self):
+    def on_camera_selection_changed(self, device_id):
         """Callback for camera selection change."""
-        self._logger.info('Changed')
+        self._logger.info(f"Changed camera selection to device: {device_id}")
+        self._camera_reader.set_camera(device_id)
         self.start_capturing()
 
     def _init_reader(self):
@@ -132,7 +123,7 @@ class MainController(QObject):
 
         if self._model.is_capturing:
             self._logger.warning("Already Capturing")
-            self.set_status_msg("Could not start capturing")
+            self._model._status_msg = "Could not start capturing"
             return False
 
         if self._camera_reader.ready:
@@ -162,7 +153,7 @@ class MainController(QObject):
     def _start_fps_update_thread(self):
         """Spawn the fps update thread."""
         self._fps_update_thread = UpdateFps(self._model)
-        self._fps_update_thread.updateFpsLabel.connect(self._main_view.update_fps_label)
+        # self._fps_update_thread.updateFpsLabel.connect(self._main_view.update_fps_label)
         self._fps_update_thread.start()
 
     def prepare_recording(self, filename):
@@ -281,8 +272,11 @@ class MainController(QObject):
 
         Spawns the image update thread.
         """
+        if self._image_update_thread:
+            self._image_update_thread.quit()
+
         self._image_update_thread = UpdateImage(self.read_queue, self._model.frame_rate)
-        self._image_update_thread.change_pixmap.connect(self._main_view.on_new_frame)
+        # self._image_update_thread.change_pixmap.connect(self._main_view.on_new_frame)
         self._image_update_thread.new_frame.connect(self.on_new_frame)
 
         self._image_update_thread.start()

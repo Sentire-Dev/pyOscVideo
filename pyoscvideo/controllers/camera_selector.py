@@ -1,124 +1,111 @@
 import platform
 import os
 import subprocess
+import sys
 import re
 import logging
 from PyQt5.QtCore import QObject, pyqtSlot, pyqtSignal
 from pyoscvideo.model.camera_selection_model import CameraSelectionModel
 
-class CameraSelector(QObject):
+if platform.system() == "Linux":
+    import pyudev
+    import pyoscvideo.helpers.v4l2 as v4l2
+    import fcntl
+
+
+class BaseCameraSelector(QObject):
     """The main controller object.
-    
+
     TODO:
     """
     selection_changed = pyqtSignal(int)
 
-    def __init__(self, model, view):
+    def __init__(self, model):
         """Init the camera selection controller.
-        
+
         Arguments:
             model {QObject} -- [The model]
-        
+
         Raises:
             InitError: If CameraReader could not be initialized correctly
         """
         super().__init__()
         self._logger = logging.getLogger(__name__+".CameraSelector")
         self._logger.info("Initializing")
-        self._view = view
-        
-        self._model = model
-        self._model.clear_camera_list.connect(self._view.clear)
-        self._model.add_camera.connect(self._view.addItem)
 
-        self._camera_dict = {}
-                
-        self._view.currentTextChanged.connect(self.change_selection)
-        self._add_camera_counter = 0
-        self._duplicate_regex = re.compile(r".+\[(\d+)\]", re.IGNORECASE)
+        self._model = model
         self.find_cameras()
 
-    
+
+class OSXCameraSelector(BaseCameraSelector):
     def find_cameras(self):
-        self._camera_dict = {}
-        camera_names = []
-        if platform.system() == 'Darwin':
-            output = subprocess.check_output(['system_profiler', 'SPCameraDataType'])
-            p = re.compile(r"\s{4}([^\\n]+):\\n\\n")
-            device_list = p.findall(str(output))
-            self._logger.info("Found %s cameras", len(device_list))
-            for camera_id, camera_name in enumerate(device_list):
-                camera_name_inc = self.add_to_dict_with_key_increment(self._camera_dict, camera_name, camera_id)
-                camera_names.append(camera_name_inc)
-                self._logger.info("[%s] %s", camera_id, camera_name)
+        camera_dict = {}
+        output = subprocess.check_output(['system_profiler', 'SPCameraDataType'])
+        p = re.compile(r"\s{4}([^\\n]+):\\n\\n")
+        device_list = p.findall(str(output))
+        self._logger.info("Found %s cameras", len(device_list))
+        for camera_id, camera_name in enumerate(device_list):
+            camera_dict[camera_id] = camera_name
+            self._logger.info("[%s] %s", camera_id, camera_name)
+            self._model.add_camera(int(camera_id), camera_name.decode(sys.stdout.encoding))
 
-        if platform.system() == "Linux":
-            dir_str = '/sys/class/video4linux/'
-            directory = os.fsencode(dir_str)
-            for file in os.listdir(directory):
-                filename = os.fsdecode(file)
-                output = os.popen("cat " + dir_str + filename + '/name').read()
-                camera_name = output[:len(output) - 1]
-                camera_id = int(filename[5])
-                #self._logger.info("[%s] %s", camera_id, camera_name)
-                camera_name_inc = self.add_to_dict_with_key_increment(self._camera_dict, camera_name, camera_id)
-                camera_names.append(camera_name_inc)
-        camera_names.sort()
-        self._model.cameras = camera_names
 
-    @property
-    def selected_camera(self):
-        """Return the device id of the selected camera
-        
-        Returns:
-            int -- the device id
+class LinuxCameraSelector(BaseCameraSelector):
+    def __init__(self, model):
+        # Sets up udev context so we can find cameras
+        self._udev_ctx = pyudev.Context()
+        self._udev_observer = None
+
+        super().__init__(model)
+
+        # Start observing for new cameras added or removed
+        self._setup_udev_observer()
+
+    def _setup_udev_observer(self):
+        monitor = pyudev.Monitor.from_netlink(self._udev_ctx)
+        monitor.filter_by("video4linux")
+        self._udev_observer = pyudev.MonitorObserver(monitor, self._udev_observer_callback)
+        self._udev_observer.start()
+        self._logger.info(f"udev monitor started")
+
+    def _udev_observer_callback(self, action, device):
+        self._logger.info(f"New udev action: {action} - {device}")
+        if action == "add":
+            if self._check_capture_capability(device):
+                self._add_camera(device)
+        elif action == "remove":
+            if int(device.sys_number) in self._model._cameras.keys():
+                self._remove_camera(device)
+
+    def _check_capture_capability(self, device):
         """
-        return self._camera_dict[self._model.selection]
-
-
-    def add_to_dict_with_key_increment(self, dictionary, key, value):
-        """Add a key value pair to a given dictionary.
-
-        If the key already exists the key is incremented: key becomes key [1], key [1] becomes key [2]...
-
-        Note: key needs to be of type str
-        
-        Arguments:
-            dictionary {dict} -- The dictionary
-            key {str} -- The key. Needs to be of type str
-            value {object} -- The value
+        Check if {device} is capable of capturing.
 
         Returns:
-            str -- the (incremented) key for the stored value
+            bool -- capable of capturing or not
         """
-        if not isinstance(key, str):
-            raise TypeError(key)
-        if not key in dictionary:
-            dictionary[key] = value
-        else:
-            counter = 0
-            for item in dictionary:
-                if not re.search("^" + key, item) is None:
-                    counter += 1
-            key = key + " [" + str(counter) + "]"
-            dictionary[key] = value
-        return key
+        with open(device.device_node) as fd:
+            cp = v4l2.v4l2_capability()
+            fcntl.ioctl(fd, v4l2.VIDIOC_QUERYCAP, cp)
+        return cp.device_caps & v4l2.V4L2_CAP_VIDEO_CAPTURE
 
-    @pyqtSlot(str)
-    def change_selection(self, camera_name):
-        """Change the selected camera.
-        
-        Arguments:
-            camera_name {String} -- the name of the camera
-        """
-        if (camera_name in self._camera_dict):
-            self._model.selection = camera_name
-            self._logger.info("Selected camera: %s", camera_name)
-            self.selection_changed.emit(self._camera_dict[camera_name])
-        else:
-            msg = "Camera %s is not a valid name." % camera_name
-            self._logger.error(msg)
-            raise KeyError(msg)
+    def _add_camera(self, device):
+        self._logger.info(f"Device added: {device}")
+        self._model.add_camera(int(device.sys_number), device.attributes.get("name").decode(sys.stdout.encoding))
+
+    def _remove_camera(self, device):
+        self._logger.info(f"Device removed: {device}")
+        self._model.remove_camera(int(device.sys_number))
+
+    def find_cameras(self):
+        self._logger.info(f"Finding cameras")
+        for device in self._udev_ctx.list_devices(subsystem="video4linux"):
+            if self._check_capture_capability(device):
+                self._add_camera(device)
 
 
+if platform.system() == "Linux":
+    CameraSelector = LinuxCameraSelector
+elif platform.system() == "Darwin":
+    CameraSelector = OSXCameraSelector
 

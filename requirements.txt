@@ -2,3 +2,5 @@ numpy==1.18.1
 opencv-python==4.2.0.32
 PyQt5==5.14.1
 PyQt5-sip==12.7.1
+pyudev==0.22.0
+six==1.14.0
