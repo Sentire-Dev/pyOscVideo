@@ -5,7 +5,8 @@ import logging
 class BaseModel(QObject):
     def __new__(cls):
         # Sets a dynamic `_signals` class variable, an array
-        # with all attributes monitored with signals by this class
+        # with all attributes emitting signals by this class
+        # format is `attribute-name`_changed
         cls._signals = [
             attr[:attr.rfind("_changed")] for attr in
                  cls.__dict__.keys() if attr.endswith("_changed") and
@@ -21,6 +22,8 @@ class BaseModel(QObject):
 
 class Recorder(BaseModel):
     is_capturing_changed = pyqtSignal(bool)
+    is_recording_changed = pyqtSignal(bool)
+    is_prepared_changed = pyqtSignal(bool)
     frame_rate_changed = pyqtSignal(float)
     status_msg_changed = pyqtSignal(str)
 
@@ -29,6 +32,9 @@ class Recorder(BaseModel):
         self._logger = logging.getLogger(__name__ + ".Recorder")
         self._status_msg = ''
         self.is_capturing = False
+        self.is_recording = False
+        self.is_prepared = False # TODO: better name for this attribute
+
         self.frame_rate = 30
         self.frame_counter = 0
         self.last_update = 0

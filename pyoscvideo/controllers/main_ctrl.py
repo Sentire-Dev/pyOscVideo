@@ -44,17 +44,17 @@ def _generate_filename():
 
 class MainController(QObject):
     """The main controller object.
-    
+
     TODO: add logger
     """
     _camera_reader: CameraReader
 
     def __init__(self, model):
         """Init the main controller.
-        
+
         Arguments:
             model {QObject} -- [The model]
-        
+
         Raises:
             InitError: If CameraReader could not be initialized correctly
         """
@@ -63,8 +63,6 @@ class MainController(QObject):
         self._logger = logging.getLogger(__name__ + ".MainController")
         self._logger.info("Initializing")
         self._model = model
-        self._recording = False
-        self._capturing = False
         self._image_update_thread = None
         self._source = None
         self._camera_reader = None
@@ -115,7 +113,7 @@ class MainController(QObject):
 
     def start_capturing(self):
         """Start capturing frames from the defined source.
-        
+
         Creates CameraReader Object and sets the source and the state
         TODO: add return value which indicates if capturing actually started
         """
@@ -128,7 +126,7 @@ class MainController(QObject):
 
         if self._camera_reader.ready:
             self._start_image_update_thread()
-            self._capturing = True
+            self._model.is_capturing = True
             return True
         self._logger.warning("Could not start capturing")
 
@@ -158,19 +156,18 @@ class MainController(QObject):
 
     def prepare_recording(self, filename):
         """Prepare the recording.
-        
+
         If not capturing yet, starts the capturing, and tries to create a file
         with the set file extension.
-        
+
         TODO: provide return value which indicates if preparation was successful
         """
         filename = filename + ".avi"
         self._logger.info("Preparing recording: %s", filename)
-        if not self._capturing:
+        if not self._model.is_capturing:
             self.start_capturing()
 
         # check if camera is available
-
         if self._camera_reader.ready:
             assert isinstance(filename, str)
             self._writer.size = self._camera_reader.size
@@ -179,12 +176,13 @@ class MainController(QObject):
         # if not try to start capturing
         else:
             print("Camera Reader not initialized")
+
         if self._writer:
-            pass
-            # liblo.send(self.target, "/oscVideo/status", True, "Prepared Recording")
-        else:
-            print("Video writer not initialized")
-            # liblo.send(self.target, "/oscVideo/status", False, "Could not prepare Recording")
+            return True
+
+        print("Video writer not initialized")
+        return False
+        # liblo.send(self.target, "/oscVideo/status", False, "Could not prepare Recording")
 
     def toggle_recording(self):
         """Toggle the Recording.
@@ -192,7 +190,7 @@ class MainController(QObject):
         If not recording make a new recording with time stamped filename. Otherwise stop the current recording.
         """
         self._logger.info("Toggle Recording")
-        if not self._recording:
+        if not self._model.is_recording:
             filename = _generate_filename()
             self.new_recording(filename)
         else:
@@ -213,7 +211,7 @@ class MainController(QObject):
         See Also:
             prepare_recording()
         """
-        if not self._recording:
+        if not self._model.is_recording:
             self.prepare_recording(filename)
             if self._writer.ready:
                 self.start_recording()
@@ -228,20 +226,17 @@ class MainController(QObject):
 
     def start_recording(self):
         """Start the recording.
-
-
         """
 
         if self._camera_reader.ready and self._writer.ready:
             self._writer.start_writing()
-            self._recording = True
+            self._model.is_recording = True
             msg = "Started Recording"
             self._logger.info(msg)
-            # liblo.send(self.target, "/oscVideo/status", True, msg)
         else:
             msg = "Could not start recording, camera reader or writer not ready"
             # liblo.send(self.target, "/oscVideo/status", False, msg)
-            self._recording = False
+            self._model.is_recording = False
             self._logger.warning(msg)
 
     def stop_recording(self):
@@ -249,8 +244,8 @@ class MainController(QObject):
 
         TODO: add return values
         """
-        if self._recording:
-            self._recording = False
+        if self._model.is_recording:
+            self._model.is_recording = False
             frames_written, recording_time = self._writer.stop_writing()
             self._camera_reader.remove_queue(self._write_queue)
             self._logger.info("Stopped Recording")
@@ -258,7 +253,6 @@ class MainController(QObject):
             self._logger.info("%i frames written", frames_written)
             if recording_time > 0:
                 self._logger.info("Average frame rate: %.2f", + (frames_written / recording_time))
-            # liblo.send(self.target, "/oscVideo/status", True, "Stopped Recording")
         else:
             self._logger.warning("Not recording")
 
@@ -276,7 +270,6 @@ class MainController(QObject):
             self._image_update_thread.quit()
 
         self._image_update_thread = UpdateImage(self.read_queue, self._model.frame_rate)
-        # self._image_update_thread.change_pixmap.connect(self._main_view.on_new_frame)
         self._image_update_thread.new_frame.connect(self.on_new_frame)
 
         self._image_update_thread.start()
@@ -290,7 +283,7 @@ class MainController(QObject):
 
     #     if frame is not None:
     #         image = self.cv2qt(frame)
-    #         #print('converting frame')            
+    #         #print('converting frame')
     #         return image
     #     #print("Queue empty")
     #     return None
@@ -377,10 +370,10 @@ class UpdateImage(QThread):
     @staticmethod
     def cv2qt(frame):
         """Convert an image frame from cv to qt format.
-        
+
         Arguments:
             frame {[type]} -- [description]
-        
+
         Returns:
             [type] -- [description]
         """

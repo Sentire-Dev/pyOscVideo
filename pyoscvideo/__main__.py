@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QApplication
 from pyoscvideo.model.model import Recorder
 from pyoscvideo.controllers.main_ctrl import MainController
 from pyoscvideo.views.main_view import MainView
+from pyoscvideo.views.osc_interface import OSCInterface
 
 
 class App(QApplication):
@@ -21,6 +22,8 @@ class App(QApplication):
         self.model = Recorder()
         self.main_controller = MainController(self.model)
         self.main_view = MainView(self.main_controller)
+        self.osc_interface = OSCInterface(self.main_controller)
+        self.osc_interface.start()
 
         self.main_view.show()
 

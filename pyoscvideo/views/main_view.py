@@ -10,6 +10,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QPixmap, QImage
 from pyoscvideo.views.main_view_ui import Ui_MainWindow
 
+
 class MainView(QMainWindow):
     """ The main Window
     """
@@ -28,13 +29,13 @@ class MainView(QMainWindow):
         self._model = self._controller._model
         self._camera_list = []
 
-
         # Connect signals from controller to update the interface dynamically
         self._controller._camera_selector._model.camera_added.connect(self._add_camera_comboBox)
         self._controller._camera_selector._model.camera_removed.connect(self._remove_camera_comboBox)
         self._controller._camera_selector._model.selection_changed.connect(self._current_camera_changed)
         self._controller._fps_update_thread.updateFpsLabel.connect(self._update_fps_label)
         self._controller._model.status_msg_changed.connect(self._set_status_msg)
+        self._controller._model.is_recording_changed.connect(self._update_recording_button)
         # self._controller._camera_selector.camera_list_cleared.connect(self._ui.camera_selection_comboBox.clear)
 
         # Connect actions in UI to the controller
@@ -47,6 +48,11 @@ class MainView(QMainWindow):
             self._add_camera_comboBox({'number': number, 'name': name})
 
         self.setStatusBar(self._ui.statusbar)
+
+    @pyqtSlot(bool)
+    def _update_recording_button(self, is_recording):
+        if self._ui.recordButton.isChecked() != is_recording:
+            self._ui.recordButton.toggle()
 
     @pyqtSlot(int)
     def _change_current_camera(self, index):
