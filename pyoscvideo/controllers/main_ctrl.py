@@ -127,12 +127,13 @@ class MainController(QObject):
 
         if self._model.is_capturing:
             self._logger.warning("Already Capturing")
-            self._model._status_msg = "Could not start capturing"
+            self._model.status_msg = "Could not start capturing"
             return False
 
         if self._camera_reader.ready:
             self._start_image_update_thread()
             self._model.is_capturing = True
+            self._model.status_msg = "Capturing"
             return True
         self._logger.warning("Could not start capturing")
 
@@ -238,6 +239,7 @@ class MainController(QObject):
             self._writer.start_writing()
             self._model.is_recording = True
             msg = "Started Recording"
+            self._model.status_msg = "Started Recording"
             self._logger.info(msg)
             return True
 
@@ -252,12 +254,15 @@ class MainController(QObject):
         TODO: add return values
         """
         if self._model.is_recording:
+            msg = "Stopped Recording"
             self._model.is_recording = False
+            self._model.status_msg = msg
             frames_written, recording_time = self._writer.stop_writing()
             self._camera_reader.remove_queue(self._write_queue)
-            self._logger.info("Stopped Recording")
-            self._logger.info("Recording Time: %.1fs", recording_time)
-            self._logger.info("%i frames written", frames_written)
+            self._logger.info(msg)
+            self._logger.info(
+                f"Recording Time: {recording_time:.1f}s", recording_time)
+            self._logger.info(f"{int(frames_written)} frames written")
             if recording_time > 0:
                 avg = frames_written / recording_time
                 self._logger.info(f"Average frame rate: {avg:.2f}")

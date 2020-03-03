@@ -29,7 +29,7 @@ class Recorder(BaseModel):
     def __init__(self):
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".Recorder")
-        self._status_msg = ''
+        self.status_msg = ''
         self.is_capturing = False
         self.is_recording = False
 
