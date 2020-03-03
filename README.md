@@ -41,4 +41,9 @@ pyuic5 pyoscvideo/ressources/main_view.ui -o pyoscvideo/views/main_view_ui.py
         pyoscvideo
 
 
+## Development
 
+* Check coding style (PEP-8):
+
+        pip install pycodestyle
+        pycodestyle --exclude v4l2.py,main_view_ui.py pyoscvideo/

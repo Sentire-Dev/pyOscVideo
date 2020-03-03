@@ -10,7 +10,11 @@ TODO:
 
 import logging
 import queue
-from cv2.cv2 import CAP_PROP_FRAME_HEIGHT, CAP_PROP_FPS, CAP_PROP_FRAME_WIDTH, VideoCapture
+from cv2.cv2 import (
+        CAP_PROP_FRAME_HEIGHT,
+        CAP_PROP_FPS,
+        CAP_PROP_FRAME_WIDTH,
+        VideoCapture)
 from PyQt5.QtCore import QThread
 from pyoscvideo.helpers.helpers import get_cv_cap_property_id
 
@@ -44,7 +48,10 @@ class CameraReader:
     @property
     def ready(self):
         """Check if reader is ready."""
-        if self.stream is not None and self.stream.isOpened() and self._buffering:
+        if (
+                self.stream is not None and
+                self.stream.isOpened() and
+                self._buffering):
             return True
         return False
 
@@ -109,7 +116,7 @@ class CameraReader:
 
     def set_camera(self, device_id):
         """Set the camera by device_id.
-        
+
         Arguments:
             device_id {int} -- The systems device id
         """
@@ -130,7 +137,7 @@ class CameraReader:
         try:
             self.stream = VideoCapture(device_id)
         except RuntimeError as err:
-            print("Could not open Camera with ID " + str(device_id) + ": " + str(err))
+            print(f"Could not open Camera with ID {device_id}: {err}")
             return False
 
         self.set_camera_options(self._options)
@@ -150,26 +157,26 @@ class CameraReader:
     def set_camera_options(self, options):
         """Set the camera options.
 
-        Important Note (see https://github.com/abhiTronix/vidgear/wiki/camgear):
+        Important (see https://github.com/abhiTronix/vidgear/wiki/camgear):
             Remember, not all of the OpenCV parameters are supported by all
-            cameras. Each camera type, from android cameras to USB cameras to 
-            professional ones offers a different interface to modify its 
-            parameters. Therefore there are many branches in OpenCV code to 
-            support as many of them, but of course, not all possible devices 
+            cameras. Each camera type, from android cameras to USB cameras to
+            professional ones offers a different interface to modify its
+            parameters. Therefore there are many branches in OpenCV code to
+            support as many of them, but of course, not all possible devices
             are covered and therefore works.
 
-            Therefore, To check parameter values supported by your webcam, you 
-            can hook your camera to your Linux machine and use command 
-            v4l2-ctl -d 0 --list-formats-ext (where 0 is the index of the given 
-            camera) to list the supported video parameters and their values Or 
+            Therefore, To check parameter values supported by your webcam, you
+            can hook your camera to your Linux machine and use command
+            v4l2-ctl -d 0 --list-formats-ext (where 0 is the index of the given
+            camera) to list the supported video parameters and their values Or
             directly refer to the device corresponding datasheet, if available.
-        
+
         Arguments:
             options {dict} -- Dictionary of opencv capture properties
 
         Example:
-            fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')     
-            set_camera_options({"CAP_PROP_FOURCC" : fourcc, 
+            fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+            set_camera_options({"CAP_PROP_FOURCC" : fourcc,
                                 "CAP_PROP_FRAME_WIDTH'": 1280,
                                 "CAP_PROP_FRAME_HEIGHT" : 720})
 
@@ -211,8 +218,8 @@ class CameraReader:
 
     def add_queue(self, frame_queue):
         """Add a queue to the camera reader processed queues.
-        
-        When not needed anymore, the queue should be removed. See 
+
+        When not needed anymore, the queue should be removed. See
         remove_queue(frame_queue)
 
         Arguments:
@@ -222,7 +229,7 @@ class CameraReader:
 
     def remove_queue(self, frame_queue):
         """Remove the given frame_queue from the list of processed queues.
-        
+
         Arguments:
             frame_queue {queue.LifoQueue} -- The queue to be removed
         """
@@ -234,11 +241,11 @@ class ReadThread(QThread):
 
     def __init__(self, queues, stream):
         """Init the ReadThread Object.
-        
+
         Arguments:
-            queues {List[queue.LifoQueue]} -- A list of queues (lifo) for 
+            queues {List[queue.LifoQueue]} -- A list of queues (lifo) for
             buffering the frames
-            
+
             stream {cv.VideoCapture} -- The Video Stream to read from
         """
         super().__init__()
@@ -252,7 +259,7 @@ class ReadThread(QThread):
     @property
     def frames_read(self):
         """Get the number of read frames.
-        
+
         Returns:
             Int -- The number of read frames
         """

@@ -27,42 +27,57 @@ class OSCInterface(QThread):
         self.server = None
         self.client = None
 
-    def _prepare_recording(self, addr, filename):
-        print(filename)
-        if self._controller.prepare_recording(filename):
-            self.client.send_message("/oscVideo/status", (True, "Prepared Recording"))
-        else:
-            self.client.send_message("/oscVideo/status", (False, "Could not prepare Recording"))
+    def _send_message(self, path, args):
+        self._logger.info(
+                f"Sending message '{path}' with args '{args}' to client")
+        self.client.send_message(path, args)
 
-    def _record(self, addr, record):
-        if record:
+    def _prepare_recording(self, addr, filename=None):
+        self._logger.info(
+                f"Prepare recording with filename: {filename}")
+        if not filename:
+            self._logger.warning("No filename argument")
+        elif self._controller.prepare_recording(filename):
+            self._send_message("/oscVideo/status",
+                               (True, "Prepared Recording"))
+        else:
+            self._send_message("/oscVideo/status",
+                                (False, "Could not prepare Recording"))
+
+    def _record(self, addr, record=None):
+        if record is None:
+            self._logger.warning(f"No argument sent, expecting "
+                              f"a boolean to start or stop recording")
+        elif record:
             if self._controller.start_recording():
-                self.client.send_message("/oscVideo/status", (True, "Started Recording"))
+                self._send_message("/oscVideo/status",
+                                   (True, "Started Recording"))
             else:
-                self.client.send_message("/oscVideo/status", (False, "Couldn't start recording"))
+                self._send_message("/oscVideo/status",
+                                   (False, "Couldn't start recording"))
         else:
             self._controller.stop_recording()
-
-    def _stop_recording(self, *args):
-        print(args)
-
+            self._send_message("/oscVideo/status",
+                               (True, "Stopped Recording"))
+ 
     def run(self):
         self._logger.info("Running OSC thread")
         self._should_run = True
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
- 
+
         self._dispatcher = Dispatcher()
-        self.server = AsyncIOOSCUDPServer((self._address, self._port), self._dispatcher, self._loop)
+        self.server = AsyncIOOSCUDPServer((self._address, self._port),
+                                          self._dispatcher, self._loop)
         self.client = SimpleUDPClient("127.0.0.1", 57120)
 
-        self._dispatcher.map("/oscVideo/prepareRecording", self._prepare_recording)
+        self._dispatcher.map("/oscVideo/prepareRecording",
+                             self._prepare_recording)
         self._dispatcher.map("/oscVideo/record", self._record)
-        self._dispatcher.map("/oscVideo/stopRecording", self._stop_recording)
-
-        self._logger.info(f"OSC Server is listening on {self._address}:{self._port}")
 
         self.server.serve()
+        self._logger.info(
+                f"OSC Server listening on {self._address}:{self._port}")
         self._loop.run_forever()
-        
+
         self._logger.info(f"OSC Server finished")

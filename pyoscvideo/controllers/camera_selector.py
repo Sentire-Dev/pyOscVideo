@@ -39,14 +39,15 @@ class BaseCameraSelector(QObject):
 class OSXCameraSelector(BaseCameraSelector):
     def find_cameras(self):
         camera_dict = {}
-        output = subprocess.check_output(['system_profiler', 'SPCameraDataType'])
+        output = subprocess.check_output(
+                ['system_profiler', 'SPCameraDataType'])
         p = re.compile(r"\s{4}([^\\n]+):\\n\\n")
         device_list = p.findall(str(output))
         self._logger.info("Found %s cameras", len(device_list))
         for camera_id, camera_name in enumerate(device_list):
             camera_dict[camera_id] = camera_name
             self._logger.info("[%s] %s", camera_id, camera_name)
-            self._model.add_camera(int(camera_id), camera_name.decode(sys.stdout.encoding))
+            self._model.add_camera(int(camera_id), camera_name)
 
 
 class LinuxCameraSelector(BaseCameraSelector):
@@ -63,7 +64,8 @@ class LinuxCameraSelector(BaseCameraSelector):
     def _setup_udev_observer(self):
         monitor = pyudev.Monitor.from_netlink(self._udev_ctx)
         monitor.filter_by("video4linux")
-        self._udev_observer = pyudev.MonitorObserver(monitor, self._udev_observer_callback)
+        self._udev_observer = pyudev.MonitorObserver(
+                monitor, self._udev_observer_callback)
         self._udev_observer.start()
         self._logger.info(f"udev monitor started")
 
@@ -90,7 +92,9 @@ class LinuxCameraSelector(BaseCameraSelector):
 
     def _add_camera(self, device):
         self._logger.info(f"Device added: {device}")
-        self._model.add_camera(int(device.sys_number), device.attributes.get("name").decode(sys.stdout.encoding))
+        self._model.add_camera(
+                int(device.sys_number),
+                device.attributes.get("name").decode(sys.stdout.encoding))
 
     def _remove_camera(self, device):
         self._logger.info(f"Device removed: {device}")
@@ -107,4 +111,3 @@ if platform.system() == "Linux":
     CameraSelector = LinuxCameraSelector
 elif platform.system() == "Darwin":
     CameraSelector = OSXCameraSelector
-

@@ -15,7 +15,7 @@ from cv2.cv2 import VideoWriter as cvVideoWriter
 
 def setup_logger():
     """Set up the logger for the module.
-    
+
     NOTE: Logger needs to be configured from outside the module. See
     "logging_settings.json" in /logging/logs/
     """
@@ -29,9 +29,11 @@ class VideoWriter:
     Arguments:
         queue {queue.LifoQueue} -- The frame_queue
         filename {string} -- The filename
-        fourcc {int} -- The fourcc id for the codec options (See: cv2.VideoWriter_fourcc)
+        fourcc {int} -- The fourcc id for the codec options
+                        (See: cv2.VideoWriter_fourcc)
         fps {int} -- The desired frame rate
-        size {List[int, int]} -- The size of the stream to capture TODO: check if needed
+        size {List[int, int]} -- The size of the stream to capture
+                                 TODO: check if needed
     """
 
     def __init__(self, frame_queue, fourcc, frame_rate, size):
@@ -91,9 +93,10 @@ class VideoWriter:
         """
         if not self._writing:
             if os.path.isfile(filename):
-                logging.warning("File %s already exists!", filename)
+                self._logger.warning(f"File {filename} already exists!")
                 return False
-            self._writer = cvVideoWriter(filename, self._fourcc, self._fps, (self._size[0], self._size[1]))
+            self._writer = cvVideoWriter(filename, self._fourcc, self._fps,
+                                         (self._size[0], self._size[1]))
             if self._writer.isOpened():
                 self._ready = True
                 return True
@@ -120,7 +123,7 @@ class VideoWriter:
 
     def stop_writing(self):
         """Stop the writing thread.
-        
+
         Returns:
             frames_written (int): the number of frames written
             recording_time (float): the duration of the recording in seconds
@@ -133,24 +136,26 @@ class VideoWriter:
         self._write_thread.stop = True
         self._write_thread.quit()
         self._write_thread.wait()
-        return self._write_thread.frames_written, self._write_thread.recording_time
+        return (self._write_thread.frames_written,
+                self._write_thread.recording_time)
 
 
 class WriteThread(QThread):
     """Class for multi-threaded writing.
-    
+
     Subclass of QThread.
 
     """
 
     def __init__(self, frame_queue, cv_video_writer, fps):
         """Init the WriteThread Object.
-        
-        Arguments:
-            frame_queue {queue.LifoQueue} -- The queue (Lifo) of frames to be written 
-            cv_video_writer {cv.VideoWriter} -- The cv_VideoWriter object for writing to disk
-            fps {int} -- The desired frame rate
 
+        Arguments:
+            frame_queue {queue.LifoQueue} -- The queue (Lifo) of frames
+                                             to be written
+            cv_video_writer {cv.VideoWriter} -- The cv_VideoWriter object for
+                                                writing to disk
+            fps {int} -- The desired frame rate
         """
         super().__init__()
         self._queue = frame_queue
@@ -163,12 +168,15 @@ class WriteThread(QThread):
         self._logger = logging.getLogger(__name__ + ".WriteThread")
 
     def run(self):
-        """Thread worker for writing frames to queue at quasi constant frame rate."""
+        """
+        Thread worker for writing frames to queue at quasi constant frame rate.
+        """
         self._logger.info("Started writing")
         first_frame_time = 0
         last_frame_time = 0
         while not self.stop:
-            calculated_time = first_frame_time + self._frames_written * self._frame_duration
+            calculated_time = (first_frame_time +
+                               self._frames_written * self._frame_duration)
             time_difference = calculated_time - time.time()
             # if we are ahead of time we should wait
             if time_difference > 0:
@@ -215,7 +223,7 @@ class WriteThread(QThread):
     @property
     def recording_time(self):
         """Get the duration of the recording in seconds.
-        
+
         Returns:
             float -- the duration of the recording in seconds
         """
@@ -224,7 +232,7 @@ class WriteThread(QThread):
     @property
     def frames_written(self):
         """Get the number of written frames.
-        
+
         Returns:
             int -- The number of written frames
         """

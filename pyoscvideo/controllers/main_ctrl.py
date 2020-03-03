@@ -24,7 +24,9 @@ from pyoscvideo.model.model import CameraSelectorModel
 # TODO: Global variables should not be defined here
 #       instead use Settings Class
 # FOURCC = -1 # Should output available codecs, not working at the moment
-FOURCC = "MJPG"  # The default codec, works on arch and mac together with .avi extensions
+
+# The default codec, works on arch and mac together with .avi extensions
+FOURCC = "MJPG"
 # FOURCC = "xvid" # The default codec
 CAMERA_WIDTH = 1920
 CAMERA_HEIGHT = 1080
@@ -71,7 +73,8 @@ class MainController(QObject):
         self._init_reader()
 
         self._camera_selector = CameraSelector(CameraSelectorModel())
-        self._camera_selector._model.selection_changed.connect(self.on_camera_selection_changed)
+        self._camera_selector._model.selection_changed.connect(
+                self.on_camera_selection_changed)
         self._fps_update_thread = None
         self._start_fps_update_thread()
         self._writer = None
@@ -109,7 +112,10 @@ class MainController(QObject):
             raise InitError("OscVideo()", "Could not initialise CameraReader")
 
     def _init_writer(self):
-        self._writer = VideoWriter(self._write_queue, FOURCC, FPS, self._camera_reader.size)
+        self._writer = VideoWriter(self._write_queue,
+                                   FOURCC,
+                                   FPS,
+                                   self._camera_reader.size)
 
     def start_capturing(self):
         """Start capturing frames from the defined source.
@@ -130,7 +136,8 @@ class MainController(QObject):
             return True
         self._logger.warning("Could not start capturing")
 
-        # if self._camera_reader.set_camera(self._camera_selector.selected_camera):
+        # if self._camera_reader.set_camera(
+        #       self._camera_selector.selected_camera):
         #     #self.source = Sources.Camera
         #     msg = "Started Capturing"
         #     self._main_view.set_status_msg(msg)
@@ -160,7 +167,7 @@ class MainController(QObject):
         If not capturing yet, starts the capturing, and tries to create a file
         with the set file extension.
 
-        TODO: provide return value which indicates if preparation was successful
+        TODO: provide return value indicating if preparation was successful
         """
         filename = filename + ".avi"
         self._logger.info("Preparing recording: %s", filename)
@@ -171,7 +178,8 @@ class MainController(QObject):
         if self._camera_reader.ready:
             assert isinstance(filename, str)
             self._writer.size = self._camera_reader.size
-            self._writer.prepare_writing(filename)
+            if not self._writer.prepare_writing(filename):
+                return False
             self._camera_reader.add_queue(self._write_queue)
         # if not try to start capturing
         else:
@@ -182,12 +190,12 @@ class MainController(QObject):
 
         print("Video writer not initialized")
         return False
-        # liblo.send(self.target, "/oscVideo/status", False, "Could not prepare Recording")
 
     def toggle_recording(self):
         """Toggle the Recording.
 
-        If not recording make a new recording with time stamped filename. Otherwise stop the current recording.
+        If not recording make a new recording with time stamped filename.
+        Otherwise stop the current recording.
         """
         self._logger.info("Toggle Recording")
         if not self._model.is_recording:
@@ -216,10 +224,8 @@ class MainController(QObject):
             if self._writer.ready:
                 self.start_recording()
             else:
-                msg = "Could not start Recording. Check filename"
-                self._logger.warning(msg)
-                # liblo.send(self.target, "/oscVideo/status", False,
-                #           msg)
+                self._logger.warning(
+                        "Could not start Recording. Check filename")
         else:
             self.stop_recording()
             self.new_recording(filename)
@@ -233,11 +239,12 @@ class MainController(QObject):
             self._model.is_recording = True
             msg = "Started Recording"
             self._logger.info(msg)
-        else:
-            msg = "Could not start recording, camera reader or writer not ready"
-            # liblo.send(self.target, "/oscVideo/status", False, msg)
-            self._model.is_recording = False
-            self._logger.warning(msg)
+            return True
+
+        self._model.is_recording = False
+        self._logger.warning(
+            "Could not start recording, camera reader or writer not ready")
+        return False
 
     def stop_recording(self):
         """Stop the recording and print out statistics.
@@ -252,7 +259,13 @@ class MainController(QObject):
             self._logger.info("Recording Time: %.1fs", recording_time)
             self._logger.info("%i frames written", frames_written)
             if recording_time > 0:
-                self._logger.info("Average frame rate: %.2f", + (frames_written / recording_time))
+                avg = frames_written / recording_time
+                self._logger.info(f"Average frame rate: {avg:.2f}")
+            # Re-init the writer
+            # TODO: review this because it doesn't seem correct to re-init
+            # it here
+            self._writer = None
+            self._init_writer()
         else:
             self._logger.warning("Not recording")
 
@@ -269,7 +282,8 @@ class MainController(QObject):
         if self._image_update_thread:
             self._image_update_thread.quit()
 
-        self._image_update_thread = UpdateImage(self.read_queue, self._model.frame_rate)
+        self._image_update_thread = UpdateImage(
+                self.read_queue, self._model.frame_rate)
         self._image_update_thread.new_frame.connect(self.on_new_frame)
 
         self._image_update_thread.start()
@@ -384,347 +398,10 @@ class UpdateImage(QThread):
             else:
                 qt_format = QImage.Format_RGB888
 
-        cv_image = QImage(frame, frame.shape[1], frame.shape[0], frame.strides[0], qt_format)
+        cv_image = QImage(frame, frame.shape[1], frame.shape[0],
+                          frame.strides[0], qt_format)
         cv_image = cv_image.rgbSwapped()
         return cv_image
-
-
-# class OscVideo():
-#     """ Class for recording and playing video files via OSC commands """
-#     def __init__(self):
-#         # Define the codec and create VideoWriter object
-#         print("Init OSC Video")
-#         self.writer = None
-#         self.video_reader = None
-#         self.camera_reader = None
-#         self.queue = queue.Queue()
-#         self.recording = False
-#         self.playing = False
-#         self.source = Sources.NotSpecified
-#         self.send_target = None
-#         self.capturing = False
-
-#         try:
-#             self.target = liblo.Address(TARGET_HOSTNAME, TARGET_PORT)
-#         except liblo.AddressError as err:
-#             print(str(err))
-#             sys.exit()
-
-#     def prepare_playing(self, filename):
-#         """Prepare playback of video file.
-
-#         Checks if video with the given filename and with any of the supported
-#         file extensions exists in the given set folder path and opens it for
-#         reading.
-
-#         Arguments:
-#             filename {String} -- the filename of the video without extension
-
-#         Returns:
-#             success {Boolean} -- if preparing the video playback was successful
-#         """
-#         fullname = self.check_if_file_exists(filename)
-#         if not fullname:
-#             print("File " + filename + " does not exist")
-#             return False
-
-#         #filename += extension
-#         if not self.playing:
-#             self.video_reader = VideoReader()
-#             if self.video_reader.open_file(fullname):
-#                 liblo.send(self.target, "/oscVideo/status", True, "Prepared Playing")
-#                 return True
-#         print("Cannot prepare playing, already playing")
-#         liblo.send(self.target, "/oscVideo/status", False, "Already Playing")
-#         return False
-
-
-#     def check_if_file_exists(self, filename):
-#         """Check if the file exists
-
-#         Checks if a video file with the given filename and any of the supported
-#         extensions exists in the configured folder path
-
-#         Args:
-#             filename: the filename without extensions
-
-#         Returns:
-#             Filename with extensions if file exists or False if no video file
-#             found
-#         """
-#         fullname = None
-#         for ext in SupportedFileFormats.All:
-#             fullname = os.getcwd() + "/" + filename + ext
-#             print(fullname)
-#             if os.path.isfile(fullname):
-#                 return fullname
-#             print("No file found with name: " + filename)
-#             liblo.send(self.target, "/oscVideo/status", False, "File not found")
-#             return False
-
-
-#     def start_playing(self):
-#         """Starts playback.
-#         TODO: add return value
-#         """
-#         if not self.playing:
-#             if not self.recording:
-#                 if self.video_reader.start_playing(): # TODO: rename to is_ready
-#                     self.source = Sources.Video
-#                 self.playing = True
-#                 liblo.send(self.target, "/oscVideo/status", True, "Started Playing")
-#             else:
-#                 print("In recording mode. Won't start playing")
-#                 liblo.send(self.target, "/oscVideo/status", False, "In recording Mode")
-#         else:
-#             print("Already Playing")
-#             liblo.send(self.target, "/oscVideo/status", False, "Already Playing")
-
-
-#     def stop_playing(self):
-#         """Stops playback."""
-#         if self.source == Sources.Video:
-#             self.source = Sources.NotSpecified
-#             self.playing = False
-#             print("Stopped Playing")
-#             liblo.send(self.target, "/oscVideo/status", True, "Stopped Playing")
-#         else:
-#             print("Not playing. Nothing to stop")
-#             liblo.send(self.target, "/oscVideo/status", False, "Not Playing")
-
-#     def stop_capturing(self):
-#         """Stop capturing."""
-#         self.source = Sources.NotSpecified
-#         self.camera_reader.release()
-#         liblo.send(self.target, "/oscVideo/status", True, "Stopped Capturing")
-#         self.capturing = False
-
-
-#     def release(self):
-#         """releases all created Objects."""
-#         if self.video_reader:
-#             self.video_reader.release()
-
-#         if self.camera_reader:
-#             self.camera_reader.release()
-
-#         if self.writer:
-#             self.writer.release()
-#         #cv2.destroyAllWindows()
-
-#     def print_user_input_message(self):
-#         """Prints user instructions to terminal."""
-#         print("Waiting for user input")
-#         print(" c: start and stop capturing")
-#         print(" r: start and stop recording")
-#         print(" q: quit")
-#         print("Press key...")
-
-#     @staticmethod
-#     def create_blank_img(width, height, rgb_color=(0, 0, 0)):
-#         """Create new image (numpy array) filled with given color in RGB.
-
-#         Returns:
-#             image (array) in numpy format
-#         """
-#         # Create black blank image
-#         image = np.zeros((height, width, 3), np.uint8)
-#         # Since OpenCV uses BGR, convert the color first
-#         color = tuple(reversed(rgb_color))
-#         # Fill image with color
-#         image[:] = color
-#         return image
-
-
-# class Sources(object):
-#     ''' Defines available image Sources
-#     '''
-
-#     Video = "Video"
-#     Camera = "Camera"
-#     NotSpecified = "None"
-#     All = (Video, Camera, NotSpecified)
-
-# class SupportedFileFormats(object):
-#     ''' Defines the supported file formats
-
-#     The supported file formats
-
-#     TODO: should be platform specific
-#     TODO: Add more File formats
-#     '''
-#     Avi = ".avi" # workks on arch and win
-#     Mpeg4 = ".mpeg4"
-#     All = (Avi, Mpeg4)
-
-# class OscServer(liblo.ServerThread):
-#     """ Provides OSC Interface
-
-#     Inherits from liblo.ServerThread
-
-#     Defines callback functions for OSC messages
-#     """
-#     def __init__(self, writer):
-#         self.osc_video = writer # TODO: should not own writer/osc_video instance
-#         liblo.ServerThread.__init__(self, LISTEN_PORT)
-
-#     @liblo.make_method('/oscVideo/newRecording', 's')
-#     def new_record(self, path, args):
-#         """Callback Function for for starting a new recording."""
-#         filename = args[0]
-#         print("Received message '%s' with argument: %s" % (path, filename))
-#         self.osc_video.new_recording(filename)
-
-#     @liblo.make_method('/oscVideo/prepareRecording', 's')
-#     def prepare_recording(self, path, args):
-#         """Callback Function for preparing a recording.
-
-#         Calling start_recording() immediately after Camera is opened results in "OpenCV: AVF:
-#         waiting to write video data." messages and Blocks the server.
-
-#         prepareRecording opens the Camera first and starts Capturing so that recording can start
-#         without blocking the Program execution.
-
-#         TODO: Find the cause for the message and implement testing if recording is ready.
-#         """
-#         filename = args[0]
-#         print("Received message '%s' with arguments: %s" % (path, args))
-#         self.osc_video.prepare_recording(filename)
-
-
-#     @liblo.make_method('/oscVideo/preparePlaying', 's')
-#     def prepare_playing(self, path, args):
-#         """Callback function for Video Playback Preparation"""
-#         filename = args[0]
-#         print("Received message '%s' with argument '%s'" % (path, filename))
-#         self.osc_video.prepare_playing(filename)
-
-#     @liblo.make_method('/oscVideo/play', 'i')
-#     def play(self, path, args):
-#         """Callback function for Video Playback"""
-#         play = args[0]
-#         if play == 1:
-#             self.osc_video.start_playing()
-#         elif play == 0:
-#             self.osc_video.stop_playing()
-
-
-#     @liblo.make_method('/oscVideo/record', 'i')
-#     def record(self, path, args):
-#         """Callback function for video recording"""
-#         record = args[0]
-#         if record == 1:
-#             self.osc_video.start_recording()
-#         elif record == 0:
-#             self.osc_video.stop_recording()
-
-
-#     @liblo.make_method('/oscVideo/stopRecording', None)
-#     def stop_recording(self, path, args):
-#         """Callback Function for for stop the recording."""
-#         print("Received message '%s'" % path)
-#         self.osc_video.stop_recording()
-
-
-#     @liblo.make_method(None, None)
-#     def fallback(self, path, args):
-#         """Generic handler for unknown messages."""
-#         print("Received unknown message '%s' with arguments '%s'" % (path, args))
-
-
-# class VideoReader():
-#     """ Captures Video from File
-#     """
-#     def __init__(self):
-#         self.capture = None
-#         self.filename = None
-#         self.first_frame_time = None
-#         self.last_frame_time = None
-#         self.frames_read = 0
-#         self.fps = None
-#         self.frame_duration = None
-
-#     def open_file(self, filename):
-#         """ opens the file
-
-#         Parameters
-#         ----------
-
-#         filename: the full path to the file with extension
-#         """
-#         self.filename = filename
-#         self.capture = cv2.VideoCapture(filename)
-
-#         if self.capture.isOpened():
-#             self.fps = self.capture.get(cv2.CAP_PROP_FPS)
-#             self.frame_duration = 1/self.fps
-#             print("Succuessfully opened file: " + filename)
-#             return True
-#         print("Error opening video file: " + filename)
-#         return False
-
-#     def start_playing(self):
-#         """ starts the playback of the video file """
-#         print("Started Playing Video")
-
-#         if self.capture.isOpened():
-#             return True
-#             # moved to main thread
-
-#             # # Capture frame-by-frame
-#             # success, frame = self.capture.read()
-#             # if success:
-#             #     # Display the resulting frame
-#             #     cv2.imshow(window_name, frame)
-#             #     # Press Q on keyboard to  exit
-#             #     if cv2.waitKey(30) & 0xFF == ord('q'):
-#             #         break
-#             # # Break the loop
-#             # else:
-#             #     print("Could not grab frame, stop playing now")
-#             #     self.playing = False
-#             #     break
-#         else:
-#             print("No file ready to play")
-#             return False
-#         #self.release()
-
-#     def stop_playing(self):
-#         """ stops the playback of the video file """
-#         self.release()
-
-#     def read(self):
-#         """ reads one frame from the source
-
-#         Returns
-#         -------
-
-#         success (boolean): true if frame could be read,
-#         frame (array): the image frame in cv format,
-#         sleep_time (float): the time in seconds the program should sleep in
-#         order to guarantee constant frame rate
-#         """
-#         success, frame = self.capture.read()
-#         if not success:
-#             print("Could not read frame")
-#             self.stop_playing()
-#             return (False, None, None)
-#         if frame is not None:
-#             if self.frames_read == 0:
-#                 self.first_frame_time = time.time()
-#             self.frames_read += 1
-#             self.last_frame_time = time.time()
-#         if self.first_frame_time is None:
-#             sleep_time = self.frame_duration
-#         else:
-#             calculated_time = self.first_frame_time + self.frames_read*self.frame_duration
-#             sleep_time = max(0, calculated_time - time.time())
-#         return (True, frame, sleep_time)
-
-#     def release(self):
-#         """ releases the capture """
-#         self.capture.release()
-#         cv2.destroyAllWindows()
 
 
 class Error(Exception):
