@@ -4,31 +4,32 @@ Test file for parsing available video devices on MacOs and Linux
 
 TODO:
     * add Windows implementation
-
-Version:
-    0.1
-
-Author:
-    Pascal Staudt
-
-License:
-    Copyright (C) 2020 Pascal Staudt
-    This file is part of oscvideo software.
-    oscvideo is free software: you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by the Free
-    Software Foundation, either version 3 of the License, or (at your option) any
-    later version.
-    oscvideo software is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-    more details.
-    You should have received a copy of the GNU General Public License along with
-    oscvideo software. If not, see <http://www.gnu.org/licenses/>.
 """
-import platform
+
+# ******************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                               *
+#                                                                              *
+#  This file is part of pyOscVideo.                                            *
+#                                                                              *
+#  pyOscVideo is free software: you can redistribute it and/or modify          *
+#  it under the terms of the GNU General Public License as published by        *
+#  the Free Software Foundation, either version 3 of the License, or           *
+#  (at your option) any later version.                                         *
+#                                                                              *
+#  pyOscVideo is distributed in the hope that it will be useful,               *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+#  GNU General Public License for more details.                                *
+#                                                                              *
+#  You should have received a copy of the GNU General Public License           *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
+# ******************************************************************************
+
 import os
-import subprocess
+import platform
 import re
+import subprocess
+
 # pylint: disable=C0103
 # pylint: disable=global-statement
 if platform.system() == 'Darwin':
