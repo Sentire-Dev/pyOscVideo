@@ -1,21 +1,39 @@
-# pylint: disable=trailing-whitespace
 """Source code for CameraReader class.
 
 CameraReader handles reading frames from a camera
-TODO:
-    - add Version number
-    - add author
-    - add license
+TODO: add proper description
 """
 
+# ******************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                               *
+#                                                                              *
+#  This file is part of pyOscVideo.                                            *
+#                                                                              *
+#  pyOscVideo is free software: you can redistribute it and/or modify          *
+#  it under the terms of the GNU General Public License as published by        *
+#  the Free Software Foundation, either version 3 of the License, or           *
+#  (at your option) any later version.                                         *
+#                                                                              *
+#  pyOscVideo is distributed in the hope that it will be useful,               *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+#  GNU General Public License for more details.                                *
+#                                                                              *
+#  You should have received a copy of the GNU General Public License           *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
+# ******************************************************************************
+
+# pylint: disable=trailing-whitespace
+
 import logging
-import queue
-from cv2.cv2 import (
-        CAP_PROP_FRAME_HEIGHT,
-        CAP_PROP_FPS,
-        CAP_PROP_FRAME_WIDTH,
-        VideoCapture)
+
 from PyQt5.QtCore import QThread
+from cv2.cv2 import (
+    CAP_PROP_FRAME_HEIGHT,
+    CAP_PROP_FPS,
+    CAP_PROP_FRAME_WIDTH,
+    VideoCapture)
+
 from pyoscvideo.helpers.helpers import get_cv_cap_property_id
 
 

@@ -21,59 +21,52 @@
 #  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
 # ******************************************************************************
 
-import time
-
 import cv2
+# import required libraries
+from vidgear.gears import CamGear
 
-CODEC = 1196444237.0 # MJPG
-
-
-if __name__ == '__main__' :
-
-    # Start default camera
-    video = cv2.VideoCapture(0)
-
-    video.set(cv2.CAP_PROP_FOURCC, CODEC)
-    video.set(cv2.CAP_PROP_FPS, 30)
-
-    # Find OpenCV version
-    (major_ver, minor_ver, subminor_ver) = (cv2.__version__).split('.')
-
-    # With webcam get(CV_CAP_PROP_FPS) does not work.
-    # Let's see for ourselves.
-
-    if int(major_ver)  < 3 :
-        fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
-        print("Frames per second using video.get(cv2.cv.CV_CAP_PROP_FPS): " + str(fps))
-    else :
-        fps = video.get(cv2.CAP_PROP_FPS)
-        print("Frames per second using video.get(cv2.CAP_PROP_FPS) : " + str(fps))
+options = {"CAP_PROP_FPS ":30, 'THREADED_QUEUE_MODE':True} # define tweak parameters foryour stream.
+stream = CamGear(source=2, logging=True, **options).start() # To open video stream on first index(i.e. 0) device
+stream2 = CamGear(source=0, logging=True, **options).start()
+stream3 = CamGear(source=6, logging=True, **options).start()
+stream4 = CamGear(source=10, logging=True, **options).start() 
 
 
-    # Number of frames to capture
-    num_frames = 30
+# define various attributes and start the stream
+print(stream.framerate)
+# infinite loop
+while True:
+
+	frame = stream.read()
+	frame2 = stream2.read()
+	frame3 = stream3.read()
+	frame4 = stream4.read()
+	# read frames
+
+	# check if frame is None
+	if frame is None:
+		#if True break the infinite loop
+		break
+
+	# do something with frame here
+
+	cv2.imshow("Output Frame", frame)
+	cv2.imshow("Output Frame2", frame2)
+	cv2.imshow("Output Frame3", frame3)
+	cv2.imshow("Output Frame4", frame4)
 
 
-    print ("Capturing {0} frames".format(num_frames))
 
-    # Start time
-    start = time.time()
+	# Show output window
 
-    # Grab a few frames
-    for i in range(0, num_frames) :
-        ret, frame = video.read()
+	key = cv2.waitKey(1) & 0xFF
+	# check for 'q' key-press
+	if key == ord("q"):
+		#if 'q' key-pressed exit loop
+		break
 
+cv2.destroyAllWindows()
+# close output window
 
-    # End time
-    end = time.time()
-
-    # Time elapsed
-    seconds = end - start
-    print("Time taken : {0} seconds".format(seconds))
-
-    # Calculate frames per second
-    fps  = num_frames / seconds
-    print("Estimated frames per second : {0}".format(fps))
-
-    # Release video
-    video.release()
+stream.stop()
+# safely close video stream.
