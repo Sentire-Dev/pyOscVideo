@@ -6,24 +6,24 @@ constant framerate. It uses cv2.VideoCapture and cv2.VideoWriter
     TODO: update description
 """
 
-# ******************************************************************************
-#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                               *
-#                                                                              *
-#  This file is part of pyOscVideo.                                            *
-#                                                                              *
-#  pyOscVideo is free software: you can redistribute it and/or modify          *
-#  it under the terms of the GNU General Public License as published by        *
-#  the Free Software Foundation, either version 3 of the License, or           *
-#  (at your option) any later version.                                         *
-#                                                                              *
-#  pyOscVideo is distributed in the hope that it will be useful,               *
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of              *
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
-#  GNU General Public License for more details.                                *
-#                                                                              *
-#  You should have received a copy of the GNU General Public License           *
-#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
-# ******************************************************************************
+# *****************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
+#                                                                             *
+#  This file is part of pyOscVideo.                                           *
+#                                                                             *
+#  pyOscVideo is free software: you can redistribute it and/or modify         *
+#  it under the terms of the GNU General Public License as published by       *
+#  the Free Software Foundation, either version 3 of the License, or          *
+#  (at your option) any later version.                                        *
+#                                                                             *
+#  pyOscVideo is distributed in the hope that it will be useful,              *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+#  GNU General Public License for more details.                               *
+#                                                                             *
+#  You should have received a copy of the GNU General Public License          *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.       *
+# *****************************************************************************
 
 # pylint: disable=trailing-whitespace
 
