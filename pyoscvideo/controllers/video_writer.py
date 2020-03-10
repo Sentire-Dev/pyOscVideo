@@ -157,7 +157,7 @@ class VideoWriter:
             return 0, 0
         self._logger.info('Stop writing')
         self._writing = False
-        self._write_thread.stop = True
+        self._write_thread.stop()
         self._write_thread.quit()
         self._write_thread.wait()
         return (self._write_thread.frames_written,
@@ -168,7 +168,6 @@ class WriteThread(QThread):
     """Class for multi-threaded writing.
 
     Subclass of QThread.
-
     """
 
     def __init__(self, frame_queue, cv_video_writer, fps):
@@ -183,46 +182,52 @@ class WriteThread(QThread):
         """
         super().__init__()
         self._queue = frame_queue
-        self._cv_video_writer = cv_video_writer
+        self._towrite_queue = queue.Queue()
+        self._filesystem_writer_thread = QueuedCvWriteThread(self._towrite_queue, cv_video_writer)
 
-        self.stop = False
+        self._stop = False
         self._frames_written = 0
         self._recording_time = 0
         self._frame_duration = 1. / fps
         self._logger = logging.getLogger(__name__ + ".WriteThread")
+
+    def stop(self):
+        self._filesystem_writer_thread.stop = True
+        self._stop = True
 
     def run(self):
         """
         Thread worker for writing frames to queue at quasi constant frame rate.
         """
         self._logger.info("Started writing")
+        self._filesystem_writer_thread.start()
         first_frame_time = 0
         last_frame_time = 0
-        while not self.stop:
+        while not self._stop:
             calculated_time = (first_frame_time +
                                self._frames_written * self._frame_duration)
             time_difference = calculated_time - time.time()
             # if we are ahead of time we should wait
             if time_difference > 0:
                 self._logger.debug("Sleeping for %s seconds", time_difference)
-                time.sleep(time_difference)
+                time.sleep(time_difference) 
             else:
                 # get most recent frame and write it to the file stream
                 try:
                     frame = self._queue.get_nowait()
                 except queue.Empty:
-                    self._logger.debug('Queue Empty')
+                    self._logger.debug(f'Queue empty, no frames available')
                     continue
+                else:
+                    self._logger.debug(f'got a frame!')
                 # check if frame was read
                 if frame is not None:
                     if self._frames_written == 0:
                         first_frame_time = time.time()
                         self._logger.debug("First Frame")
-                    if self._cv_video_writer:
-                        self._cv_video_writer.write(frame)
-                        self._logger.debug("Write frame")
-                        self._frames_written += 1
-                        last_frame_time = time.time()
+                    self._towrite_queue.put(frame)
+                    self._frames_written += 1
+                    last_frame_time = time.time()
                 # afterwards discard remaining frames
             skipped_frames = 0
             while self._queue.not_empty:
@@ -239,9 +244,6 @@ class WriteThread(QThread):
                 self._logger.warning("skipped %s frames", skipped_frames)
 
         self._logger.info("Finished writing")
-        self._logger.info("Releasing cv.VideoWriter")
-        if self._cv_video_writer:
-            self._cv_video_writer.release()
         self._recording_time = last_frame_time - first_frame_time
 
     @property
@@ -261,3 +263,41 @@ class WriteThread(QThread):
             int -- The number of written frames
         """
         return self._frames_written
+
+
+class QueuedCvWriteThread(QThread):
+    """Class for multi-threaded writing.
+
+    Subclass of QThread.
+    """
+
+    def __init__(self, frame_queue, cv_video_writer):
+        """Init the WriteThread Object.
+
+        Arguments:
+            frame_queue {queue.LifoQueue} -- The queue (Lifo) of frames
+                                             to be written
+            cv_video_writer {cv.VideoWriter} -- The cv_VideoWriter object for
+                                                writing to disk
+            fps {int} -- The desired frame rate
+        """
+        super().__init__()
+        self._queue = frame_queue
+        self._cv_video_writer = cv_video_writer
+        self._logger = logging.getLogger(__name__ + ".QueueCvWriteThread")
+        self.stop = False
+
+    def run(self):
+        self._logger.info("Starting filesystem writer")
+        while not self.stop:
+            frame = self._queue.get()
+            self._cv_video_writer.write(frame)
+
+        while not self._queue.empty():
+            frame = self._queue.get_nowait()
+            self._logger.info("more frames")
+            self._cv_video_writer.write(frame)
+
+        self._logger.info("Stopping filesystem writer")
+        self._logger.info("Releasing cv.VideoWriter")
+        self._cv_video_writer.release()

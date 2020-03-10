@@ -49,7 +49,7 @@ CAMERA_WIDTH = 1920
 CAMERA_HEIGHT = 1080
 PLAY_FILENAME = "output"
 LISTEN_PORT = 1234
-FPS = 30
+FPS = 25
 TARGET_PORT = 57120
 TARGET_HOSTNAME = "localhost"
 WINDOW_NAME = "OSCVideo"
@@ -278,7 +278,7 @@ class MainController(QObject):
             self._camera_reader.remove_queue(self._write_queue)
             self._logger.info(msg)
             self._logger.info(
-                f"Recording Time: {recording_time:.1f}s", recording_time)
+                f"Recording Time: {recording_time:.1f}s")
             self._logger.info(f"{int(frames_written)} frames written")
             if recording_time > 0:
                 avg = frames_written / recording_time
