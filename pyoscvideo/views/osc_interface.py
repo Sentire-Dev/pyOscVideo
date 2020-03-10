@@ -42,12 +42,12 @@ class OSCInterface(QThread):
                                (True, "Prepared Recording"))
         else:
             self._send_message("/oscVideo/status",
-                                (False, "Could not prepare Recording"))
+                               (False, "Could not prepare Recording"))
 
     def _record(self, addr, record=None):
         if record is None:
             self._logger.warning(f"No argument sent, expecting "
-                              f"a boolean to start or stop recording")
+                                 f"a boolean to start or stop recording")
         elif record:
             if self._controller.start_recording():
                 self._send_message("/oscVideo/status",
@@ -59,7 +59,7 @@ class OSCInterface(QThread):
             self._controller.stop_recording()
             self._send_message("/oscVideo/status",
                                (True, "Stopped Recording"))
- 
+
     def run(self):
         self._logger.info("Running OSC thread")
         self._should_run = True
