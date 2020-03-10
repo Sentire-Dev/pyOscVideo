@@ -23,7 +23,7 @@
 
 * Generate UI code from .ui file
 
-        pyuic5 pyoscvideo/ressources/main_view.ui -o pyoscvideo/views/main_view_ui.py
+        pyuic5 pyoscvideo/resources/main_view.ui -o pyoscvideo/views/main_view_ui.py
 
 * Install pyOscVideo locally
 
