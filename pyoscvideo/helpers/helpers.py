@@ -49,12 +49,12 @@ def setup_logging(settings_path='logging/logging_settings.json',
         logs_dir = os.path.join(conf_dir, "logs")
         if not os.path.exists(logs_dir):
             os.makedirs(logs_dir)
- 
+
         for handler in config['handlers'].values():
             if 'filename' in handler.keys():
                 handler['filename'] = os.path.join(logs_dir,
                                                    handler['filename'])
-        
+
         logging.config.dictConfig(config)
         logging.info(f"Saving logs to: {conf_dir}")
     else:
