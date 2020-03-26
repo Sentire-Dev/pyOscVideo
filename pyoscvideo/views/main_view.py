@@ -2,12 +2,31 @@
 Main View
 TODO: add proper description
 """
-import time
-import queue
+# ******************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                               *
+#                                                                              *
+#  This file is part of pyOscVideo.                                            *
+#                                                                              *
+#  pyOscVideo is free software: you can redistribute it and/or modify          *
+#  it under the terms of the GNU General Public License as published by        *
+#  the Free Software Foundation, either version 3 of the License, or           *
+#  (at your option) any later version.                                         *
+#                                                                              *
+#  pyOscVideo is distributed in the hope that it will be useful,               *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+#  GNU General Public License for more details.                                *
+#                                                                              *
+#  You should have received a copy of the GNU General Public License           *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
+# ******************************************************************************
+
 import logging
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
-from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
+
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
+
 from pyoscvideo.views.main_view_ui import Ui_MainWindow
 
 
@@ -110,12 +129,10 @@ class MainView(QMainWindow):
         """set the image in the main windows
         """
         self._logger.debug("New frame")
-        # TODO: scaled should not be called here as it is very expensive
-        #       maybe check Qt.FastTransformation?
         self._ui.imageLabel.setPixmap(QPixmap.fromImage(image).scaled(
             self._ui.imageLabel.size(),
             Qt.KeepAspectRatio,
-            Qt.SmoothTransformation))
+            Qt.FastTransformation))
 
     @pyqtSlot()
     def on_capture_button_clicked(self):
