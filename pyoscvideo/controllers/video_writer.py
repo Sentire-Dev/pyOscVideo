@@ -1,16 +1,40 @@
-# pylint: disable=trailing-whitespace
 """video_writer library source code.
 
 video_writer provides a Class for threaded recording from a web cam qt quasi
 constant framerate. It uses cv2.VideoCapture and cv2.VideoWriter
+
+    TODO: update description
 """
-import time
+
+# ******************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                               *
+#                                                                              *
+#  This file is part of pyOscVideo.                                            *
+#                                                                              *
+#  pyOscVideo is free software: you can redistribute it and/or modify          *
+#  it under the terms of the GNU General Public License as published by        *
+#  the Free Software Foundation, either version 3 of the License, or           *
+#  (at your option) any later version.                                         *
+#                                                                              *
+#  pyOscVideo is distributed in the hope that it will be useful,               *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of              *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
+#  GNU General Public License for more details.                                *
+#                                                                              *
+#  You should have received a copy of the GNU General Public License           *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
+# ******************************************************************************
+
+# pylint: disable=trailing-whitespace
+
+import logging
 import os
 import queue
-import logging
+import time
+
 from PyQt5.QtCore import QThread
-from cv2.cv2 import VideoWriter_fourcc
 from cv2.cv2 import VideoWriter as cvVideoWriter
+from cv2.cv2 import VideoWriter_fourcc
 
 
 def setup_logger():
