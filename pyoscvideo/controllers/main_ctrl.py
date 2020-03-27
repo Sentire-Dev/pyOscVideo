@@ -105,9 +105,20 @@ class MainController(QObject):
 
     @read_queue.setter
     def read_queue(self, read_queue):
-        """Get the queue for reading frames."""
-        # TODO type check
-        self.__read_queue = read_queue
+        """Set the queue for reading frames.
+
+        Arguments:
+            read_queue {queue.LifoQueue} -- The queue
+
+        Raises:
+            TypeError: if given queue is of wrong type
+        """
+        if isinstance(read_queue, queue.LifoQueue):
+            self.__read_queue = read_queue
+        else:
+            msg = f"Passed argument of wrong type: {type(read_queue)}"
+            self._logger.error(msg)
+            raise TypeError(msg)
 
     def on_camera_selection_changed(self, device_id):
         """Callback for camera selection change."""

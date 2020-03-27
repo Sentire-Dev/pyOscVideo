@@ -68,6 +68,10 @@ class VideoWriter:
         # pylint: disable=unused-argument
         self._logger = logging.getLogger(__name__ + '.VideoWriter')
         self._logger.info("Initializing")
+        if not isinstance(frame_queue, queue.LifoQueue):
+            msg = f"Passed argument of wrong type: {type(frame_queue)}"
+            self._logger.error(msg)
+            raise TypeError(msg)
         self._queue = frame_queue
         # parsing option arguments
         self._ready = False
@@ -182,6 +186,10 @@ class WriteThread(QThread):
             fps {int} -- The desired frame rate
         """
         super().__init__()
+        if not isinstance(frame_queue, queue.LifoQueue):
+            msg = f"Passed argument of wrong type: {type(frame_queue)}"
+            self._logger.error(msg)
+            raise TypeError(msg)
         self._queue = frame_queue
         self._cv_video_writer = cv_video_writer
 

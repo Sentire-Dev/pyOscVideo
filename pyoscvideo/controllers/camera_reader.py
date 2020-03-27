@@ -26,6 +26,7 @@ TODO: add proper description
 # pylint: disable=trailing-whitespace
 
 import logging
+import queue
 
 from PyQt5.QtCore import QThread
 from cv2.cv2 import (
@@ -55,6 +56,10 @@ class CameraReader:
         self._logger = logging.getLogger(__name__ + ".CameraReader")
         self._logger.info("Initializing")
         self._options = options
+        if not isinstance(frame_queue, queue.LifoQueue):
+            msg = f"Passed argument of wrong type: {type(frame_queue)}"
+            self._logger.error(msg)
+            raise TypeError(msg)
         self._queues = [frame_queue]
         self._num_clients = 0
         self._read_thread = None
@@ -243,6 +248,10 @@ class CameraReader:
         Arguments:
             frame_queue {queue.LifoQueue} -- The queue to be removed
         """
+        if not isinstance(frame_queue, queue.LifoQueue):
+            msg = f"Passed argument of wrong type: {type(frame_queue)}"
+            self._logger.error(msg)
+            raise TypeError(msg)
         self._queues.append(frame_queue)
 
     def remove_queue(self, frame_queue):
@@ -251,6 +260,10 @@ class CameraReader:
         Arguments:
             frame_queue {queue.LifoQueue} -- The queue to be removed
         """
+        if not isinstance(frame_queue, queue.LifoQueue):
+            msg = f"Passed argument of wrong type: {type(frame_queue)}"
+            self._logger.error(msg)
+            raise TypeError(msg)
         self._queues.remove(frame_queue)
 
 
