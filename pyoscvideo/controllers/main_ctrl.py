@@ -73,9 +73,6 @@ class MainController(QObject):
 
         Arguments:
             model {QObject} -- [The model]
-
-        Raises:
-            InitError: If CameraReader could not be initialized correctly
         """
         super().__init__()
         helpers.setup_logging()
@@ -116,17 +113,13 @@ class MainController(QObject):
         self.start_capturing()
 
     def _init_reader(self):
-        try:
-            fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
-            # TODO: Automatically select highest resolution
-            options = {"CAP_PROP_FOURCC": fourcc,
-                       "CAP_PROP_FRAME_WIDTH": CAMERA_WIDTH,
-                       "CAP_PROP_FRAME_HEIGHT": CAMERA_HEIGHT
-                       }
-            self._camera_reader = CameraReader(self.read_queue, options)
-        except Exception as err:
-            print(str(err))
-            raise InitError("OscVideo()", "Could not initialise CameraReader")
+        fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
+        # TODO: Automatically select highest resolution
+        options = {"CAP_PROP_FOURCC": fourcc,
+                   "CAP_PROP_FRAME_WIDTH": CAMERA_WIDTH,
+                   "CAP_PROP_FRAME_HEIGHT": CAMERA_HEIGHT
+                   }
+        self._camera_reader = CameraReader(self.read_queue, options)
 
     def _init_writer(self):
         self._writer = VideoWriter(self._write_queue,
@@ -424,22 +417,3 @@ class UpdateImage(QThread):
                           frame.strides[0], qt_format)
         cv_image = cv_image.rgbSwapped()
         return cv_image
-
-
-class Error(Exception):
-    """Base class for exceptions in this module."""
-
-
-class InitError(Error):
-    """Exception raised for errors at intialising.
-
-    Args:
-        expression -- input expression in which the error occurred
-        message -- explanation of the error
-    """
-
-    def __init__(self, expression, message):
-        """Init the Error."""
-        super().__init__(message)
-        self.expression = expression
-        self.message = message

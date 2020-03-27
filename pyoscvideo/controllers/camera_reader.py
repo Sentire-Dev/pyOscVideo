@@ -106,8 +106,7 @@ class CameraReader:
     @property
     def size(self):
         """Get the size."""
-        size = [self.width, self.height]
-        return size
+        return [self.width, self.height]
 
     @size.setter
     def size(self, value):
@@ -124,13 +123,6 @@ class CameraReader:
             return frame_rate
         self._logger.warning("Camera not opened")
         return 0
-
-    @size.setter
-    def size(self, value):
-        """Set the size."""
-        # TODO: Implement
-        self._logger.warning("setting size not implemented")
-        raise NotImplementedError
 
     def set_camera(self, device_id):
         """Set the camera by device_id.

@@ -23,22 +23,26 @@ TODO: add proper description
 # *****************************************************************************
 
 
-import time
-import queue
 import logging
+import queue
+import time
+
+from typing import Type, List
+
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QPixmap, QImage
+
+from pyoscvideo.controllers.main_ctrl import MainController
 from pyoscvideo.views.main_view_ui import Ui_MainWindow
 
 
 class MainView(QMainWindow):
     """ The main Window
     """
-    start_capturing = pyqtSignal()
     should_quit = pyqtSignal()
 
-    def __init__(self, controller):
+    def __init__(self, controller: Type[MainController]):
         super().__init__()
         self._logger = logging.getLogger(__name__+".MainView")
 
@@ -49,7 +53,8 @@ class MainView(QMainWindow):
         self._controller = controller
         self._model = self._controller._model
         self._camera_selector_model = self._controller._camera_selector._model
-        self._camera_list = []
+
+        self._camera_list: List[dict] = []
 
         # Connect signals from controller to update the interface dynamically
         self._camera_selector_model.camera_added.connect(
@@ -76,19 +81,19 @@ class MainView(QMainWindow):
         self.setStatusBar(self._ui.statusbar)
 
     @pyqtSlot(bool)
-    def _update_recording_button(self, is_recording):
+    def _update_recording_button(self, is_recording: bool):
         if self._ui.recordButton.isChecked() != is_recording:
             self._ui.recordButton.toggle()
 
     @pyqtSlot(int)
-    def _change_current_camera(self, index):
+    def _change_current_camera(self, index: int):
         number = self._camera_list[index]['number']
         self._logger.info(f"Changing current camera to: {index}")
         self._camera_selector_model.selection = (
                 self._camera_list[index]['number'])
 
     @pyqtSlot(int)
-    def _current_camera_changed(self, device_id):
+    def _current_camera_changed(self, device_id: int) -> None:
         self._logger.info(f"Current camera changed to {device_id}")
         try:
             device_info = {
@@ -108,20 +113,20 @@ class MainView(QMainWindow):
                     self._on_new_frame)
 
     @pyqtSlot(object)
-    def _add_camera_comboBox(self, camera_info):
+    def _add_camera_comboBox(self, camera_info: dict):
         self._camera_list.append(camera_info)
         self._camera_list.sort(key=lambda e: e['number'])
         idx = self._camera_list.index(camera_info)
         self._ui.camera_selection_comboBox.insertItem(idx, camera_info['name'])
 
     @pyqtSlot(object)
-    def _remove_camera_comboBox(self, camera_info):
+    def _remove_camera_comboBox(self, camera_info: dict):
         idx = self._camera_list.index(camera_info)
         del self._camera_list[idx]
         self._ui.camera_selection_comboBox.removeItem(idx)
 
     @pyqtSlot(str)
-    def _set_status_msg(self, msg):
+    def _set_status_msg(self, msg: str):
         self._ui.statusbar.setEnabled(True)
         self._logger.debug("Status changed: %s", msg)
         self._ui.statusbar.showMessage(msg)
@@ -138,22 +143,11 @@ class MainView(QMainWindow):
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation))
 
-    @pyqtSlot()
-    def on_capture_button_clicked(self):
-        self.start_capturing()
-
     @pyqtSlot(float)
-    def _update_fps_label(self, fps):
+    def _update_fps_label(self, fps: float):
         self._ui.frame_rate_label.setText("Fps: " + str(round(fps, 1)))
 
-    def button_clicked(self):
-        """ callback function for button click
-        """
-        print('Button Clicked')
-        self.start_capturing()
-
     def closeEvent(self, event):
-        print("event")
         reply = QMessageBox.question(
                 self,
                 'Message',
@@ -166,4 +160,4 @@ class MainView(QMainWindow):
             event.ignore()
 
     def on_quit(self):
-        self.should_quit.emit
+        self.should_quit.emit()
