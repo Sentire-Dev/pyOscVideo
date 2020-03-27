@@ -1,3 +1,23 @@
+# *****************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
+#                                                                             *
+#  This file is part of pyOscVideo.                                           *
+#                                                                             *
+#  pyOscVideo is free software: you can redistribute it and/or modify         *
+#  it under the terms of the GNU General Public License as published by       *
+#  the Free Software Foundation, either version 3 of the License, or          *
+#  (at your option) any later version.                                        *
+#                                                                             *
+#  pyOscVideo is distributed in the hope that it will be useful,              *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+#  GNU General Public License for more details.                               *
+#                                                                             *
+#  You should have received a copy of the GNU General Public License          *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.       *
+# *****************************************************************************
+
+
 from pythonosc.osc_server import AsyncIOOSCUDPServer
 from pythonosc.udp_client import SimpleUDPClient
 from pythonosc.dispatcher import Dispatcher
@@ -42,12 +62,12 @@ class OSCInterface(QThread):
                                (True, "Prepared Recording"))
         else:
             self._send_message("/oscVideo/status",
-                                (False, "Could not prepare Recording"))
+                               (False, "Could not prepare Recording"))
 
     def _record(self, addr, record=None):
         if record is None:
             self._logger.warning(f"No argument sent, expecting "
-                              f"a boolean to start or stop recording")
+                                 f"a boolean to start or stop recording")
         elif record:
             if self._controller.start_recording():
                 self._send_message("/oscVideo/status",
@@ -59,7 +79,7 @@ class OSCInterface(QThread):
             self._controller.stop_recording()
             self._send_message("/oscVideo/status",
                                (True, "Stopped Recording"))
- 
+
     def run(self):
         self._logger.info("Running OSC thread")
         self._should_run = True
