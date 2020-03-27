@@ -25,6 +25,8 @@ class MainView(QMainWindow):
         self._ui.setupUi(self)
         self._ui.closeEvent = self.closeEvent
 
+        self._init_image_label()
+
         self._controller = controller
         self._model = self._controller._model
         self._camera_selector_model = self._controller._camera_selector._model
@@ -130,6 +132,12 @@ class MainView(QMainWindow):
         """
         print('Button Clicked')
         self.start_capturing()
+
+    def _init_image_label(self):
+        black_pixmap = QPixmap(400, 300)
+        black_pixmap.fill(Qt.black)
+        self._ui.imageLabel.setPixmap(black_pixmap)
+
 
     def closeEvent(self, event):
         print("event")
