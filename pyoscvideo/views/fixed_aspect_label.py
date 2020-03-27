@@ -16,21 +16,21 @@
 #  You should have received a copy of the GNU General Public License           *
 #  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
 # ******************************************************************************
-from PyQt5.QtWidgets import QLabel
+from PyQt5.QtWidgets import QLabel, QFrame, QVBoxLayout
 from PyQt5.QtCore import QPoint, Qt, QSize
 from PyQt5.QtGui import QPainter, QPixmap
 
 
 class FixedAspectLabel(QLabel):
-    def paintEvent(self, event):
-        size = self.size()
-        painter = QPainter(self)
-        point = QPoint(0, 0)
-        if isinstance(self.pixmap(), QPixmap):
-            scaled_pixmap = self.pixmap().scaled(size, Qt.KeepAspectRatio, transformMode=Qt.FastTransformation)
-            self.setMaximumSize(scaled_pixmap.size())
-            point.setX(0)
-            point.setY(0)
-            # print (point.x(), ' ', point.y())
-            painter.drawPixmap(point, scaled_pixmap)
-            self.setMaximumSize(QSize(4000, 5000))
+    def __init__(self, parent=None):
+        QFrame.__init__(self, parent)
+
+        # Give the frame a border so that we can see it.
+        self.setFrameStyle(1)
+
+    def resizeEvent(self, event):
+        # Create a square base size of 10x10 and scale it to the new size
+        # maintaining aspect ratio.
+        new_size = QSize(self.pixmap().size())
+        new_size.scale(event.size(), Qt.KeepAspectRatio)
+        self.resize(new_size)
