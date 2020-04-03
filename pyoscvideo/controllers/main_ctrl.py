@@ -38,7 +38,7 @@ from pyoscvideo.controllers.camera_reader import CameraReader
 from pyoscvideo.controllers.camera_selector import CameraSelector
 from pyoscvideo.controllers.video_writer import VideoWriter
 from pyoscvideo.helpers import helpers
-from pyoscvideo.model.model import CameraSelectorModel, Recorder
+from pyoscvideo.models import CameraSelectorModel, Recorder
 
 # TODO: Global variables should not be defined here
 #       instead use Settings Class

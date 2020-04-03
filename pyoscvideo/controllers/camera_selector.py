@@ -31,7 +31,7 @@ from typing import Type
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from pyoscvideo.model.model import CameraSelectorModel
+from pyoscvideo.models import CameraSelectorModel
 
 if platform.system() == "Linux":
     import pyudev

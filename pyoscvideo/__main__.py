@@ -28,7 +28,7 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from pyoscvideo.controllers.main_ctrl import MainController
-from pyoscvideo.model.model import Recorder
+from pyoscvideo.models import Recorder
 from pyoscvideo.views.main_view import MainView
 from pyoscvideo.osc.interface import OSCInterface
 
