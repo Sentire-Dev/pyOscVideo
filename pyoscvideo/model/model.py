@@ -39,7 +39,7 @@ class BaseModel(QObject):
             isinstance(getattr(cls, attr), pyqtSignal)]
         return super().__new__(cls)
 
-    def __setattr__(self, attr: Any, value: Any) -> None: 
+    def __setattr__(self, attr: Any, value: Any) -> None:
         # Checks if attribute should emit a signal when being set.
         if attr in self._signals:
             getattr(self, attr + "_changed").emit(value)
@@ -63,7 +63,6 @@ class Recorder(BaseModel):
     # here but all the math is done by the main controller
     frame_rate: float
     frame_counter: int
-
 
     def __init__(self) -> None:
         super().__init__()
@@ -92,7 +91,7 @@ class CameraSelectorModel(BaseModel):
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".CameraSelectorModel")
         self._cameras: Dict[int, str] = {}
-        self.selection = None
+        self.selection = 0
 
     def add_camera(self, number: int, name: str):
         self._logger.info(f"New camera added: {name} - {number}")

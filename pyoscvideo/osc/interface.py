@@ -34,9 +34,9 @@ import logging
 
 class OSCInterface(QThread):
     def __init__(self,
-            controller: MainController,
-            addr: str = "0.0.0.0",
-            port: int = 57220):
+                 controller: MainController,
+                 addr: str = "0.0.0.0",
+                 port: int = 57220):
         super().__init__()
         self._logger = logging.getLogger(__name__+".OSCInterface")
         self._logger.info("Initializing OSC thread")

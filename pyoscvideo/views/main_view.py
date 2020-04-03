@@ -48,7 +48,6 @@ class MainView(QMainWindow):
 
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
-        self._ui.closeEvent = self.closeEvent
 
         self._controller = controller
         self._model = self._controller._model

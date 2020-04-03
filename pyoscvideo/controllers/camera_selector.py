@@ -122,7 +122,9 @@ class LinuxCameraSelector(BaseCameraSelector):
         """
         with open(device.device_node) as fd:
             cp = v4l2.v4l2_capability()
-            fcntl.ioctl(fd, v4l2.VIDIOC_QUERYCAP, cp)
+            # Ignore type checking here because ioctl apparenlty can't handle
+            # a ctypes.Structure
+            fcntl.ioctl(fd, v4l2.VIDIOC_QUERYCAP, cp)  # type: ignore
         return cp.device_caps & v4l2.V4L2_CAP_VIDEO_CAPTURE
 
     def _add_camera(self, device: pyudev.Device):
@@ -130,7 +132,7 @@ class LinuxCameraSelector(BaseCameraSelector):
         self._model.add_camera(
                 int(device.sys_number),
                 device.attributes.get("name").decode(sys.stdout.encoding))
-    
+
     def _remove_camera(self, device: pyudev.Device):
         self._logger.info(f"Device removed: {device}")
         self._model.remove_camera(int(device.sys_number))

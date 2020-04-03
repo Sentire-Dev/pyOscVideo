@@ -36,7 +36,10 @@
 
 ## Development
 
-* Check coding style (PEP-8):
+* Check coding style (PEP-8) and type hints
 
-        pip install pycodestyle
-        pycodestyle --exclude v4l2.py,main_view_ui.py pyoscvideo/
+* First need to install the tools (in case you don't have):
+        pip install pycodestyle mypy 
+
+* then simply run:
+        ./run_tests.sh 
