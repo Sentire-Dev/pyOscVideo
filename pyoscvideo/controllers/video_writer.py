@@ -88,7 +88,7 @@ class VideoWriter:
     @property
     def ready(self) -> bool:
         """Get the status."""
-        return self._writer is not None and self._writer.isOpenend()
+        return self._writer is not None and self._writer.isOpened()
 
     def prepare_writing(self, filename):
         """Prepare writing to file

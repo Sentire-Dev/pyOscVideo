@@ -109,7 +109,7 @@ class MainView(QMainWindow):
         if idx != self._ui.camera_selection_comboBox:
             # check if we need to update ourselves
             self._ui.camera_selection_comboBox.setCurrentIndex(idx)
-            self._controller.change_pixmap_callback(self._on_new_frame)
+            self._controller.set_change_pixmap_cb(self._on_new_frame)
 
     @pyqtSlot(object)
     def _add_camera_comboBox(self, camera_info: Dict[str, Any]):
