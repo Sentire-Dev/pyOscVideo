@@ -26,8 +26,10 @@ TODO: add proper file description
 import logging
 import queue
 import time
+import numpy as np
 
-# import liblo
+from typing import Callable, Optional
+
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 from cv2.cv2 import VideoWriter_fourcc
@@ -36,7 +38,7 @@ from pyoscvideo.controllers.camera_reader import CameraReader
 from pyoscvideo.controllers.camera_selector import CameraSelector
 from pyoscvideo.controllers.video_writer import VideoWriter
 from pyoscvideo.helpers import helpers
-from pyoscvideo.model.model import CameraSelectorModel
+from pyoscvideo.model.model import CameraSelectorModel, Recorder
 
 # TODO: Global variables should not be defined here
 #       instead use Settings Class
@@ -62,17 +64,14 @@ def _generate_filename():
 
 
 class MainController(QObject):
-    """The main controller object.
-
-    TODO: add logger
     """
-    _camera_reader: CameraReader
+    The main controller object.
+    """
+    # TODO: better name than main controller
 
-    def __init__(self, model):
-        """Init the main controller.
-
-        Arguments:
-            model {QObject} -- [The model]
+    def __init__(self, model: Recorder):
+        """
+        Init the main controller.
         """
         super().__init__()
         helpers.setup_logging()
@@ -81,30 +80,21 @@ class MainController(QObject):
         self._model = model
         self._image_update_thread = None
         self._source = None
-        self._camera_reader = None
-        self.read_queue = queue.LifoQueue()
-        self._write_queue = queue.LifoQueue()
+        self._camera_reader: Optional[CameraReader] = None
+
+        self._read_queue: queue.LifoQueue = queue.LifoQueue()
+        self._write_queue: queue.LifoQueue = queue.LifoQueue()
         self._init_reader()
 
         self._camera_selector = CameraSelector(CameraSelectorModel())
         self._camera_selector._model.selection_changed.connect(
                 self.on_camera_selection_changed)
-        self._fps_update_thread = None
+        self._fps_update_thread: Optional[UpdateFps] = None
+
         self._start_fps_update_thread()
         self._writer = None
         self._init_writer()
         self.frame_rate = 0
-
-    @property
-    def read_queue(self):
-        """Get the queue for reading frames."""
-        return self.__read_queue
-
-    @read_queue.setter
-    def read_queue(self, read_queue):
-        """Get the queue for reading frames."""
-        # TODO type check
-        self.__read_queue = read_queue
 
     def on_camera_selection_changed(self, device_id):
         """Callback for camera selection change."""
@@ -119,13 +109,28 @@ class MainController(QObject):
                    "CAP_PROP_FRAME_WIDTH": CAMERA_WIDTH,
                    "CAP_PROP_FRAME_HEIGHT": CAMERA_HEIGHT
                    }
-        self._camera_reader = CameraReader(self.read_queue, options)
+        self._camera_reader = CameraReader(self._read_queue, options)
 
     def _init_writer(self):
         self._writer = VideoWriter(self._write_queue,
                                    FOURCC,
                                    FPS,
                                    self._camera_reader.size)
+
+    def set_update_fps_label_cb(self, callback: Callable[[float], None]):
+        """
+        Sets a function to be called with the current capture frame rate.
+        """
+        assert self._fps_update_thread is not None
+        self._fps_update_thread.updateFpsLabel.connect(callback)
+
+    def set_change_pixmap_cb(self, callback: Callable[[np.array], None]):
+        """
+        Sets a function to be called with the current captured frame as
+        argument.
+        """
+        assert self._image_update_thread is not None
+        self._image_update_thread.change_pixmap.connect(callback)
 
     def start_capturing(self):
         """Start capturing frames from the defined source.
@@ -298,7 +303,7 @@ class MainController(QObject):
             self._image_update_thread.quit()
 
         self._image_update_thread = UpdateImage(
-                self.read_queue, self._model.frame_rate)
+                self._read_queue, self._model.frame_rate)
         self._image_update_thread.new_frame.connect(self.on_new_frame)
 
         self._image_update_thread.start()

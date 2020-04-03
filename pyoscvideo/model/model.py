@@ -24,7 +24,8 @@
 
 import logging
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
 from PyQt5.QtCore import QObject, pyqtSignal
 
 
@@ -85,13 +86,13 @@ class CameraSelectorModel(BaseModel):
     camera_removed = pyqtSignal(object)
     camera_added = pyqtSignal(object)
 
-    selection: int
+    selection: Optional[int]
 
     def __init__(self) -> None:
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".CameraSelectorModel")
         self._cameras: Dict[int, str] = {}
-        self.selection = 0
+        self.selection = None
 
     def add_camera(self, number: int, name: str):
         self._logger.info(f"New camera added: {name} - {number}")

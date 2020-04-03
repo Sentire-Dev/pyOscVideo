@@ -26,8 +26,9 @@ TODO: add proper description
 import logging
 import queue
 import time
+import numpy as np
 
-from typing import Type, List
+from typing import Any, Dict, List
 
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
@@ -42,7 +43,7 @@ class MainView(QMainWindow):
     """
     should_quit = pyqtSignal()
 
-    def __init__(self, controller: Type[MainController]):
+    def __init__(self, controller: MainController):
         super().__init__()
         self._logger = logging.getLogger(__name__+".MainView")
 
@@ -62,8 +63,8 @@ class MainView(QMainWindow):
                 self._remove_camera_comboBox)
         self._camera_selector_model.selection_changed.connect(
                 self._current_camera_changed)
-        self._controller._fps_update_thread.updateFpsLabel.connect(
-                self._update_fps_label)
+
+        self._controller.set_update_fps_label_cb(self._update_fps_label)
         self._model.status_msg_changed.connect(self._set_status_msg)
         self._model.is_recording_changed.connect(self._update_recording_button)
 
@@ -92,7 +93,7 @@ class MainView(QMainWindow):
                 self._camera_list[index]['number'])
 
     @pyqtSlot(int)
-    def _current_camera_changed(self, device_id: int) -> None:
+    def _current_camera_changed(self, device_id: int):
         self._logger.info(f"Current camera changed to {device_id}")
         try:
             device_info = {
@@ -108,18 +109,17 @@ class MainView(QMainWindow):
         if idx != self._ui.camera_selection_comboBox:
             # check if we need to update ourselves
             self._ui.camera_selection_comboBox.setCurrentIndex(idx)
-            self._controller._image_update_thread.change_pixmap.connect(
-                    self._on_new_frame)
+            self._controller.change_pixmap_callback(self._on_new_frame)
 
     @pyqtSlot(object)
-    def _add_camera_comboBox(self, camera_info: dict):
+    def _add_camera_comboBox(self, camera_info: Dict[str, Any]):
         self._camera_list.append(camera_info)
         self._camera_list.sort(key=lambda e: e['number'])
         idx = self._camera_list.index(camera_info)
         self._ui.camera_selection_comboBox.insertItem(idx, camera_info['name'])
 
     @pyqtSlot(object)
-    def _remove_camera_comboBox(self, camera_info: dict):
+    def _remove_camera_comboBox(self, camera_info: Dict[str, Any]):
         idx = self._camera_list.index(camera_info)
         del self._camera_list[idx]
         self._ui.camera_selection_comboBox.removeItem(idx)
@@ -131,7 +131,7 @@ class MainView(QMainWindow):
         self._ui.statusbar.showMessage(msg)
 
     @pyqtSlot(QImage)
-    def _on_new_frame(self, image):
+    def _on_new_frame(self, image: np.array):
         """set the image in the main windows
         """
         self._logger.debug("New frame")

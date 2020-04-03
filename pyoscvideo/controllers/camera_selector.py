@@ -31,6 +31,8 @@ from typing import Type
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
+from pyoscvideo.model.model import CameraSelectorModel
+
 if platform.system() == "Linux":
     import pyudev
     import pyoscvideo.helpers.v4l2 as v4l2
@@ -45,12 +47,8 @@ class BaseCameraSelector(QObject):
     """
     selection_changed = pyqtSignal(int)
 
-    def __init__(self, model):
-        """Init the camera selection controller.
-
-        Arguments:
-            model {QObject} -- [The model]
-        """
+    def __init__(self, model: CameraSelectorModel):
+        """Init the camera selection controller."""
         super().__init__()
         self._logger = logging.getLogger(__name__+".CameraSelector")
         self._logger.info("Initializing")
@@ -89,7 +87,7 @@ class LinuxCameraSelector(BaseCameraSelector):
     """
     Specialized camera selector for Linux operating system. Uses udev.
     """
-    def __init__(self, model):
+    def __init__(self, model: CameraSelectorModel):
         # Sets up udev context so we can find cameras
         self._udev_ctx = pyudev.Context()
         self._udev_observer = None
@@ -107,7 +105,7 @@ class LinuxCameraSelector(BaseCameraSelector):
         self._udev_observer.start()
         self._logger.info(f"udev monitor started")
 
-    def _udev_observer_callback(self, action, device: pyudev.Device):
+    def _udev_observer_callback(self, action: str, device: pyudev.Device):
         self._logger.info(f"New udev action: {action} - {device}")
         if action == "add":
             if self._check_capture_capability(device):
