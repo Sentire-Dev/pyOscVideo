@@ -1,21 +1,21 @@
-# ******************************************************************************
-#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                               *
-#                                                                              *
-#  This file is part of pyOscVideo.                                            *
-#                                                                              *
-#  pyOscVideo is free software: you can redistribute it and/or modify          *
-#  it under the terms of the GNU General Public License as published by        *
-#  the Free Software Foundation, either version 3 of the License, or           *
-#  (at your option) any later version.                                         *
-#                                                                              *
-#  pyOscVideo is distributed in the hope that it will be useful,               *
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of              *
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the               *
-#  GNU General Public License for more details.                                *
-#                                                                              *
-#  You should have received a copy of the GNU General Public License           *
-#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
-# ******************************************************************************
+# *****************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
+#                                                                             *
+#  This file is part of pyOscVideo.                                           *
+#                                                                             *
+#  pyOscVideo is free software: you can redistribute it and/or modify         *
+#  it under the terms of the GNU General Public License as published by       *
+#  the Free Software Foundation, either version 3 of the License, or          *
+#  (at your option) any later version.                                        *
+#                                                                             *
+#  pyOscVideo is distributed in the hope that it will be useful,              *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+#  GNU General Public License for more details.                               *
+#                                                                             *
+#  You should have received a copy of the GNU General Public License          *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.       *
+# *****************************************************************************
 
 # pylint: disable=trailing-whitespace
 """Source Code for the MainController Class of the pyoscvideo module.
@@ -49,7 +49,7 @@ CAMERA_WIDTH = 1920
 CAMERA_HEIGHT = 1080
 PLAY_FILENAME = "output"
 LISTEN_PORT = 1234
-FPS = 30
+FPS = 25
 TARGET_PORT = 57120
 TARGET_HOSTNAME = "localhost"
 WINDOW_NAME = "OSCVideo"
@@ -278,7 +278,7 @@ class MainController(QObject):
             self._camera_reader.remove_queue(self._write_queue)
             self._logger.info(msg)
             self._logger.info(
-                f"Recording Time: {recording_time:.1f}s", recording_time)
+                f"Recording Time: {recording_time:.1f}s")
             self._logger.info(f"{int(frames_written)} frames written")
             if recording_time > 0:
                 avg = frames_written / recording_time

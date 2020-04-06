@@ -21,9 +21,12 @@ TODO: add proper description
 #  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.        *
 # ******************************************************************************
 
+
+import time
+import queue
 import logging
 
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import QMainWindow, QMessageBox
 
