@@ -60,8 +60,6 @@ class Recorder(BaseModel):
     is_capturing: bool
     is_recording: bool
 
-    # TODO: it is strange that we keep frame rate and frame counter
-    # here but all the math is done by the main controller
     frame_rate: float
     frame_counter: int
 

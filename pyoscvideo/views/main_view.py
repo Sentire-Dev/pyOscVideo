@@ -132,7 +132,8 @@ class MainView(QMainWindow):
 
     @pyqtSlot(QImage)
     def _on_new_frame(self, image: np.array):
-        """set the image in the main windows
+        """
+        Set the image in the main window.
         """
         self._logger.debug("New frame")
         # TODO: scaled should not be called here as it is very expensive
