@@ -57,7 +57,7 @@ class BaseCameraSelector(QObject):
         self.find_cameras()
 
     def find_cameras(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class OSXCameraSelector(BaseCameraSelector):
