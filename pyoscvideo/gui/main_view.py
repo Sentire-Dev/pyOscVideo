@@ -2,7 +2,6 @@
 Main View
 TODO: add proper description
 """
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -35,7 +34,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QPixmap, QImage
 
 from pyoscvideo.controllers.main_ctrl import MainController
-from pyoscvideo.views.main_view_ui import Ui_MainWindow
+from pyoscvideo.gui.main_view_ui import Ui_MainWindow
 
 
 class MainView(QMainWindow):
@@ -138,12 +137,10 @@ class MainView(QMainWindow):
         Set the image in the main window.
         """
         self._logger.debug("New frame")
-        # TODO: scaled should not be called here as it is very expensive
-        #       maybe check Qt.FastTransformation?
         self._ui.imageLabel.setPixmap(QPixmap.fromImage(image).scaled(
             self._ui.imageLabel.size(),
             Qt.KeepAspectRatio,
-            Qt.SmoothTransformation))
+            Qt.FastTransformation))
 
     @pyqtSlot(float)
     def _update_fps_label(self, fps: float):
