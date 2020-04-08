@@ -75,7 +75,7 @@
         "propagate": false
       },
 
-      "pyoscvideo.views.main_view.MainView": {
+      "pyoscvideo.gui.main_view.MainView": {
         "level": "INFO",
         "handlers": ["console_thread", "info_file_handler", "debug_file_handler"],
         "propagate": false

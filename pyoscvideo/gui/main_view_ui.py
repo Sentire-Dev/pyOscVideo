@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'pyoscvideo/ressources/main_view.ui'
+# Form implementation generated from reading ui file 'pyoscvideo/gui/resources/main_view.ui'
 #
 # Created by: PyQt5 UI code generator 5.14.1
 #
