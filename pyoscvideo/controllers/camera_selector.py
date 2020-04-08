@@ -27,7 +27,11 @@ import re
 import subprocess
 import sys
 
+from typing import Type
+
 from PyQt5.QtCore import QObject, pyqtSignal
+
+from pyoscvideo.model.model import CameraSelectorModel
 
 if platform.system() == "Linux":
     import pyudev
@@ -36,21 +40,15 @@ if platform.system() == "Linux":
 
 
 class BaseCameraSelector(QObject):
-    """The main controller object.
-
-    TODO:
+    """
+    Base class for dealing with camera selection and handling, shouldn't be
+    used directly but as inherited by specialized classes depending on the
+    operating system.
     """
     selection_changed = pyqtSignal(int)
 
-    def __init__(self, model):
-        """Init the camera selection controller.
-
-        Arguments:
-            model {QObject} -- [The model]
-
-        Raises:
-            InitError: If CameraReader could not be initialized correctly
-        """
+    def __init__(self, model: CameraSelectorModel):
+        """Init the camera selection controller."""
         super().__init__()
         self._logger = logging.getLogger(__name__+".CameraSelector")
         self._logger.info("Initializing")
@@ -58,9 +56,21 @@ class BaseCameraSelector(QObject):
         self._model = model
         self.find_cameras()
 
+    def find_cameras(self):
+        raise NotImplementedError
+
 
 class OSXCameraSelector(BaseCameraSelector):
+    """
+    Specialized camera selector for OS X operating system.
+    """
     def find_cameras(self):
+        """
+        Populates the model with cameras available for capturing.
+        """
+        # TODO: should use ctypes and the IOKit on OS X so we don't depend
+        # on opening a subprocess to check for cameras and can also be
+        # notified in real-time when cameras are added/removed.
         camera_dict = {}
         output = subprocess.check_output(
                 ['system_profiler', 'SPCameraDataType'])
@@ -74,7 +84,10 @@ class OSXCameraSelector(BaseCameraSelector):
 
 
 class LinuxCameraSelector(BaseCameraSelector):
-    def __init__(self, model):
+    """
+    Specialized camera selector for Linux operating system. Uses udev.
+    """
+    def __init__(self, model: CameraSelectorModel):
         # Sets up udev context so we can find cameras
         self._udev_ctx = pyudev.Context()
         self._udev_observer = None
@@ -92,7 +105,7 @@ class LinuxCameraSelector(BaseCameraSelector):
         self._udev_observer.start()
         self._logger.info(f"udev monitor started")
 
-    def _udev_observer_callback(self, action, device):
+    def _udev_observer_callback(self, action: str, device: pyudev.Device):
         self._logger.info(f"New udev action: {action} - {device}")
         if action == "add":
             if self._check_capture_capability(device):
@@ -101,35 +114,38 @@ class LinuxCameraSelector(BaseCameraSelector):
             if int(device.sys_number) in self._model._cameras.keys():
                 self._remove_camera(device)
 
-    def _check_capture_capability(self, device):
+    def _check_capture_capability(self, device: pyudev.Device) -> bool:
         """
         Check if {device} is capable of capturing.
-
-        Returns:
-            bool -- capable of capturing or not
         """
         with open(device.device_node) as fd:
             cp = v4l2.v4l2_capability()
-            fcntl.ioctl(fd, v4l2.VIDIOC_QUERYCAP, cp)
+            # Ignore type checking here because ioctl apparenlty can't handle
+            # a ctypes.Structure
+            fcntl.ioctl(fd, v4l2.VIDIOC_QUERYCAP, cp)  # type: ignore
         return cp.device_caps & v4l2.V4L2_CAP_VIDEO_CAPTURE
 
-    def _add_camera(self, device):
+    def _add_camera(self, device: pyudev.Device):
         self._logger.info(f"Device added: {device}")
         self._model.add_camera(
                 int(device.sys_number),
                 device.attributes.get("name").decode(sys.stdout.encoding))
 
-    def _remove_camera(self, device):
+    def _remove_camera(self, device: pyudev.Device):
         self._logger.info(f"Device removed: {device}")
         self._model.remove_camera(int(device.sys_number))
 
     def find_cameras(self):
+        """
+        Populates the model with cameras available for capturing.
+        """
         self._logger.info(f"Finding cameras")
         for device in self._udev_ctx.list_devices(subsystem="video4linux"):
             if self._check_capture_capability(device):
                 self._add_camera(device)
 
 
+CameraSelector: Type[BaseCameraSelector]
 if platform.system() == "Linux":
     CameraSelector = LinuxCameraSelector
 elif platform.system() == "Darwin":

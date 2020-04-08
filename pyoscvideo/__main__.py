@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QApplication
 from pyoscvideo.controllers.main_ctrl import MainController
 from pyoscvideo.model.model import Recorder
 from pyoscvideo.views.main_view import MainView
-from pyoscvideo.views.osc_interface import OSCInterface
+from pyoscvideo.osc.interface import OSCInterface
 
 
 class App(QApplication):
