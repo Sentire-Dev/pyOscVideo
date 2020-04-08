@@ -35,7 +35,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
 from PyQt5.QtGui import QPixmap, QImage
 
 from pyoscvideo.controllers.main_ctrl import MainController
-from pyoscvideo.views.main_view_ui import Ui_MainWindow
+from pyoscvideo.gui.main_view_ui import Ui_MainWindow
 
 
 class MainView(QMainWindow):
