@@ -2,7 +2,6 @@
 Main View
 TODO: add proper description
 """
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -136,12 +135,10 @@ class MainView(QMainWindow):
         Set the image in the main window.
         """
         self._logger.debug("New frame")
-        # TODO: scaled should not be called here as it is very expensive
-        #       maybe check Qt.FastTransformation?
         self._ui.imageLabel.setPixmap(QPixmap.fromImage(image).scaled(
             self._ui.imageLabel.size(),
             Qt.KeepAspectRatio,
-            Qt.SmoothTransformation))
+            Qt.FastTransformation))
 
     @pyqtSlot(float)
     def _update_fps_label(self, fps: float):
