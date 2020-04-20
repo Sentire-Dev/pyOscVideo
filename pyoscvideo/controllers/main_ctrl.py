@@ -34,11 +34,11 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 from cv2.cv2 import VideoWriter_fourcc
 
-from pyoscvideo.controllers.camera_reader import CameraReader
-from pyoscvideo.controllers.camera_selector import CameraSelector
-from pyoscvideo.controllers.video_writer import VideoWriter
+from pyoscvideo.video.camera_reader import CameraReader
+from pyoscvideo.video.camera_selector import CameraSelector
+from pyoscvideo.video.video_writer import VideoWriter
 from pyoscvideo.helpers import helpers
-from pyoscvideo.models import CameraSelectorModel, Recorder
+from pyoscvideo.models import MainModel
 
 # TODO: Global variables should not be defined here
 #       instead use Settings Class
@@ -55,7 +55,7 @@ FPS = 25
 TARGET_PORT = 57120
 TARGET_HOSTNAME = "localhost"
 WINDOW_NAME = "OSCVideo"
-
+CAMERAS = 1
 
 def _generate_filename():
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -63,119 +63,29 @@ def _generate_filename():
     return filename
 
 
+            
 class MainController(QObject):
     """
     The main controller object.
     """
     # TODO: better name than main controller
 
-    def __init__(self, model: Recorder):
+    def __init__(self, cameras):
         """
         Init the main controller.
         """
         super().__init__()
-        helpers.setup_logging()
-        self._logger = logging.getLogger(__name__ + ".MainController")
+        self._logger = logging.getLogger(__name__ + ".CameraController")
         self._logger.info("Initializing")
-        self._model = model
-        self._image_update_thread = None
-        self._source = None
-        self._camera_reader: Optional[CameraReader] = None
+        self._model = MainModel()
 
-        self._read_queue: queue.LifoQueue = queue.LifoQueue()
-        self._write_queue: queue.LifoQueue = queue.LifoQueue()
-        self._init_reader()
-
-        self._camera_selector = CameraSelector(CameraSelectorModel())
-        self._camera_selector._model.selection_changed.connect(
-                self.on_camera_selection_changed)
-        self._fps_update_thread: Optional[UpdateFps] = None
-
-        self._start_fps_update_thread()
-        self._writer = None
-        self._init_writer()
-        self.frame_rate = 0
-
-    def on_camera_selection_changed(self, device_id):
-        """Callback for camera selection change."""
-        self._logger.info(f"Changed camera selection to device: {device_id}")
-        self._camera_reader.set_camera(device_id)
-        self.start_capturing()
-
-    def _init_reader(self):
-        fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
-        # TODO: Automatically select highest resolution
-        options = {"CAP_PROP_FOURCC": fourcc,
-                   "CAP_PROP_FRAME_WIDTH": CAMERA_WIDTH,
-                   "CAP_PROP_FRAME_HEIGHT": CAMERA_HEIGHT
-                   }
-        self._camera_reader = CameraReader(self._read_queue, options)
-
-    def _init_writer(self):
-        self._writer = VideoWriter(self._write_queue,
-                                   FOURCC,
-                                   FPS,
-                                   self._camera_reader.size)
-
-    def set_update_fps_label_cb(self, callback: Callable[[float], None]):
-        """
-        Sets a function to be called with the current capture frame rate.
-        """
-        assert self._fps_update_thread is not None
-        self._fps_update_thread.updateFpsLabel.connect(callback)
-
-    def set_change_pixmap_cb(self, callback: Callable[[np.array], None]):
-        """
-        Sets a function to be called with the current captured frame as
-        argument.
-        """
-        assert self._image_update_thread is not None
-        self._image_update_thread.change_pixmap.connect(callback)
+        self._cameras = cameras
 
     def start_capturing(self):
-        """Start capturing frames from the defined source.
-
-        Creates CameraReader Object and sets the source and the state
-        TODO: add return value which indicates if capturing actually started
-        """
-        self._logger.info("Start capturing")
-
-        if self._model.is_capturing:
-            self._logger.warning("Already Capturing")
-            self._model.status_msg = "Could not start capturing"
-            return False
-
-        if self._camera_reader.ready:
-            self._start_image_update_thread()
-            self._model.is_capturing = True
-            self._model.status_msg = "Capturing"
-            return True
-        self._logger.warning("Could not start capturing")
-
-        # if self._camera_reader.set_camera(
-        #       self._camera_selector.selected_camera):
-        #     #self.source = Sources.Camera
-        #     msg = "Started Capturing"
-        #     self._main_view.set_status_msg(msg)
-        #     #liblo.send(self.target, "/oscVideo/status", True, msg)
-        #     #self.capturing = True
-        #     self.frame_rate = self._camera_reader.frame_rate
-        #     #time.sleep(0.5)
-        #     self._camera_reader.start_buffering()
-        #     self._model.capturing = True
-        #     self._start_image_update_thread()
-        #     return True
-        # msg = "Could not open camera"
-        # self._logger.warning(msg)
-        # self._main_view.set_status_msg(msg)
-        # liblo.send(self.target, "/oscVideo/status", False, msg)
-        return False
-
-    def _start_fps_update_thread(self):
-        """Spawn the fps update thread."""
-        self._fps_update_thread = UpdateFps(self._model)
-        # self._fps_update_thread.updateFpsLabel.connect(self._main_view.update_fps_label)
-        self._fps_update_thread.start()
+        for camera in self._cameras:
+            if not camera.start_capturing():
+                return False
+        return True
 
     def prepare_recording(self, filename):
         """Prepare the recording.
@@ -185,27 +95,13 @@ class MainController(QObject):
 
         TODO: provide return value indicating if preparation was successful
         """
-        filename = filename + ".avi"
-        self._logger.info("Preparing recording: %s", filename)
-        if not self._model.is_capturing:
-            self.start_capturing()
-
-        # check if camera is available
-        if self._camera_reader.ready:
-            assert isinstance(filename, str)
-            self._writer.size = self._camera_reader.size
-            if not self._writer.prepare_writing(filename):
-                return False
-            self._camera_reader.add_queue(self._write_queue)
-        # if not try to start capturing
+        if not self._model.is_recording:
+            for i, camera in enumerate(self._cameras):
+                if not camera.prepare_recording(f"{filename}_camera{i}.avi"):
+                    return False
         else:
-            print("Camera Reader not initialized")
-
-        if self._writer:
-            return True
-
-        print("Video writer not initialized")
-        return False
+            self.logger.warning("Already recording")
+        return True
 
     def toggle_recording(self):
         """Toggle the Recording.
@@ -236,8 +132,7 @@ class MainController(QObject):
             prepare_recording()
         """
         if not self._model.is_recording:
-            self.prepare_recording(filename)
-            if self._writer.ready:
+            if self.prepare_recording(filename):
                 self.start_recording()
             else:
                 self._logger.warning(
@@ -245,89 +140,29 @@ class MainController(QObject):
         else:
             self.stop_recording()
             self.new_recording(filename)
-
+ 
     def start_recording(self):
-        """Start the recording.
+        """Stop the recording and print out statistics.
+
+        TODO: add return values
         """
-
-        if self._camera_reader.ready and self._writer.ready:
-            self._writer.start_writing()
-            self._model.is_recording = True
-            msg = "Started Recording"
-            self._model.status_msg = "Started Recording"
-            self._logger.info(msg)
-            return True
-
-        self._model.is_recording = False
-        self._logger.warning(
-            "Could not start recording, camera reader or writer not ready")
-        return False
+        for camera in self._cameras:
+            if not camera.start_recording():
+                return False
+        self._model.is_recording = True
+        return True
 
     def stop_recording(self):
         """Stop the recording and print out statistics.
 
         TODO: add return values
         """
-        if self._model.is_recording:
-            msg = "Stopped Recording"
-            self._model.is_recording = False
-            self._model.status_msg = msg
-            frames_written, recording_time = self._writer.stop_writing()
-            self._camera_reader.remove_queue(self._write_queue)
-            self._logger.info(msg)
-            self._logger.info(
-                f"Recording Time: {recording_time:.1f}s")
-            self._logger.info(f"{int(frames_written)} frames written")
-            if recording_time > 0:
-                avg = frames_written / recording_time
-                self._logger.info(f"Average frame rate: {avg:.2f}")
-            # Re-init the writer
-            # TODO: review this because it doesn't seem correct to re-init
-            # it here
-            self._writer = None
-            self._init_writer()
-        else:
-            self._logger.warning("Not recording")
-
-    def on_new_frame(self):
-        """set the image in the main windows
-        """
-        self._model.frame_counter += 1
-
-    def _start_image_update_thread(self):
-        """Start the capturing of frames.
-
-        Spawns the image update thread.
-        """
-        if self._image_update_thread:
-            self._image_update_thread.quit()
-
-        self._image_update_thread = UpdateImage(
-                self._read_queue, self._model.frame_rate)
-        self._image_update_thread.new_frame.connect(self.on_new_frame)
-
-        self._image_update_thread.start()
-
-    # def get_frame(self):
-    #     # get most recent frame
-    #     # while not self._frame_queue.empty():
-    #     frame = None
-    #     if self._camera_reader:
-    #         frame = self._camera_reader.stream.read()
-
-    #     if frame is not None:
-    #         image = self.cv2qt(frame)
-    #         #print('converting frame')
-    #         return image
-    #     #print("Queue empty")
-    #     return None
+        for camera in self._cameras:
+            camera.stop_recording()
+        self._model.is_recording = False
 
     def cleanup(self):
         """Perform necessary action to guarantee a clean exit of the app."""
-        self._camera_reader.release()
-        self._fps_update_thread.quit()
-        if self._image_update_thread:
-            self._image_update_thread.quit()
 
 
 class UpdateFps(QThread):

@@ -28,55 +28,147 @@ import queue
 import time
 import numpy as np
 
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
-from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QLabel, QSizePolicy, QComboBox, QHBoxLayout, QVBoxLayout
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QSize
 from PyQt5.QtGui import QPixmap, QImage
 
 from pyoscvideo.controllers.main_ctrl import MainController
+from pyoscvideo.video.camera import Camera
+from pyoscvideo.video.camera_selector import CameraSelector
 from pyoscvideo.gui.main_view_ui import Ui_MainWindow
 
 
+class CameraView:
+    def __init__(self, camera: Camera, widget):
+        """
+        """
+        self._logger = logging.getLogger(__name__+f".CameraView[{camera.name}]")
+        
+        vlayout = QVBoxLayout()
+        label = QLabel(widget)
+        label.setEnabled(True)
+        sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
+        sp.setHorizontalStretch(0)
+        sp.setVerticalStretch(0)
+        sp.setHeightForWidth(label.sizePolicy().hasHeightForWidth())
+        label.setSizePolicy(sp)
+        label.setMinimumSize(QSize(1, 1))
+        label.setSizeIncrement(QSize(0, 0))
+        label.setLayoutDirection(Qt.LeftToRight)
+        label.setScaledContents(False)
+        label.setAlignment(Qt.AlignCenter)
+        label.setObjectName(f"imageLabel for {camera.name}")
+        vlayout.addWidget(label)
+
+        hlayout = QHBoxLayout()
+        combo_box = QComboBox(widget)
+        combo_box.setObjectName(f"comboBox for {camera.name}")
+
+        frame_rate_label = QLabel(widget)
+        sp_fps = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        sp_fps.setHorizontalStretch(0)
+        sp_fps.setVerticalStretch(0)
+        sp_fps.setHeightForWidth(frame_rate_label.sizePolicy().hasHeightForWidth())
+        frame_rate_label.setSizePolicy(sp_fps)
+        frame_rate_label.setLayoutDirection(Qt.LeftToRight)
+        frame_rate_label.setAlignment(Qt.AlignCenter)
+        frame_rate_label.setObjectName("frame_rate_label")
+        
+        hlayout.addWidget(combo_box)
+        hlayout.addWidget(frame_rate_label)
+        vlayout.addLayout(hlayout)
+
+        self.layout = vlayout
+        self.fps_label = frame_rate_label
+        self.combo_box = combo_box
+        self.image_label = label
+        self.camera = camera
+
+        self._camera_list: List[Camera] = []
+        
+        for camera in CameraSelector.cameras.values():
+            self._add_camera_combo_box(camera)
+
+        self.combo_box.setCurrentIndex(self._camera_list.index(self.camera))
+
+        self._bind_actions()
+        self._start_capturing()
+    
+    def _bind_actions(self):
+        
+        self.combo_box.currentIndexChanged.connect(
+            self._change_current_camera)
+
+        CameraSelector.camera_added.connect(
+                self._add_camera_combo_box)
+        CameraSelector.camera_removed.connect(
+                self._remove_camera_combo_box)
+
+    def _start_capturing(self):
+        self.camera.start_capturing()
+        self.camera.add_change_pixmap_cb(self._on_new_frame)
+        self.camera.add_update_fps_label_cb(self._update_fps_label)
+
+    def _update_fps_label(self, fps: float):
+        self.fps_label.setText("Fps: " + str(round(fps, 1)))
+
+    def _add_camera_combo_box(self, camera: Camera):
+        self._camera_list.append(camera)
+        self._camera_list.sort(key=lambda e: e.name)
+        idx = self._camera_list.index(camera)
+        self.combo_box.insertItem(idx, camera.name)
+
+    def _remove_camera_combo_box(camera: Camera):
+        idx = self._camera_list.index(camera)
+        del self._camera_list[idx]
+        self.combo_box.removeItem(idx)
+
+    def _change_current_camera(self, index: int):
+        self._logger.info(f"Changing current camera to: {index}")
+        self.camera.remove_change_pixmap_cb(self._on_new_frame)
+        self.camera.remove_update_fps_label_cb(self._update_fps_label)
+        
+        self.camera = self._camera_list[index]
+        self._start_capturing()
+ 
+    def _on_new_frame(self, image: np.array):
+        """
+        Set the image in the main window.
+        """
+        self.image_label.setPixmap(QPixmap.fromImage(image).scaled(
+            self.image_label.size(),
+            Qt.KeepAspectRatio,
+            Qt.FastTransformation))
+
+
 class MainView(QMainWindow):
-    """ The main Window
+    """
+    The main Window
     """
     should_quit = pyqtSignal()
 
-    def __init__(self, controller: MainController):
+    def __init__(self, main_controller):
         super().__init__()
         self._logger = logging.getLogger(__name__+".MainView")
 
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
-
-        self._controller = controller
-        self._model = self._controller._model
-        self._camera_selector_model = self._controller._camera_selector._model
-
-        self._camera_list: List[dict] = []
-
-        # Connect signals from controller to update the interface dynamically
-        self._camera_selector_model.camera_added.connect(
-                self._add_camera_comboBox)
-        self._camera_selector_model.camera_removed.connect(
-                self._remove_camera_comboBox)
-        self._camera_selector_model.selection_changed.connect(
-                self._current_camera_changed)
-
-        self._controller.set_update_fps_label_cb(self._update_fps_label)
-        self._model.status_msg_changed.connect(self._set_status_msg)
-        self._model.is_recording_changed.connect(self._update_recording_button)
-
-        # Connect actions in UI to the controller
-        self._ui.camera_selection_comboBox.currentIndexChanged.connect(
-                self._change_current_camera)
+       
+        self.should_quit.connect(main_controller.cleanup)
+       
+        self._camera_views = []
+        for i, camera in enumerate(main_controller._cameras):
+            camera_view = CameraView(camera, self._ui.centralwidget)
+            self._camera_views.append(camera_view)
+            self._ui.camerasLayout.addLayout(camera_view.layout, int(i/2), i%2, 1, 1)
+       
         self._ui.recordButton.clicked.connect(
-                self._controller.toggle_recording)
-        self.should_quit.connect(self._controller.cleanup)
+            main_controller.toggle_recording)
 
-        for number, name in self._camera_selector_model._cameras.items():
-            self._add_camera_comboBox({'number': number, 'name': name})
+        main_controller._model.status_msg_changed.connect(self._set_status_msg)
+        main_controller._model.is_recording_changed.connect(self._update_recording_button)
 
         self.setStatusBar(self._ui.statusbar)
 
@@ -84,68 +176,12 @@ class MainView(QMainWindow):
     def _update_recording_button(self, is_recording: bool):
         if self._ui.recordButton.isChecked() != is_recording:
             self._ui.recordButton.toggle()
-
-    @pyqtSlot(int)
-    def _change_current_camera(self, index: int):
-        number = self._camera_list[index]['number']
-        self._logger.info(f"Changing current camera to: {index}")
-        self._camera_selector_model.selection = (
-                self._camera_list[index]['number'])
-
-    @pyqtSlot(int)
-    def _current_camera_changed(self, device_id: int):
-        self._logger.info(f"Current camera changed to {device_id}")
-        try:
-            device_info = {
-                'number': device_id,
-                'name': self._camera_selector_model._cameras[device_id]
-                }
-        except KeyError:
-            self._logger.warning(
-                    f"Tried to choose an invalid camera with id: {device_id}")
-            return
-
-        idx = self._camera_list.index(device_info)
-        if idx != self._ui.camera_selection_comboBox:
-            # check if we need to update ourselves
-            self._ui.camera_selection_comboBox.setCurrentIndex(idx)
-            self._controller.set_change_pixmap_cb(self._on_new_frame)
-
-    @pyqtSlot(object)
-    def _add_camera_comboBox(self, camera_info: Dict[str, Any]):
-        self._camera_list.append(camera_info)
-        self._camera_list.sort(key=lambda e: e['number'])
-        idx = self._camera_list.index(camera_info)
-        self._ui.camera_selection_comboBox.insertItem(idx, camera_info['name'])
-
-    @pyqtSlot(object)
-    def _remove_camera_comboBox(self, camera_info: Dict[str, Any]):
-        idx = self._camera_list.index(camera_info)
-        del self._camera_list[idx]
-        self._ui.camera_selection_comboBox.removeItem(idx)
-
+    
     @pyqtSlot(str)
     def _set_status_msg(self, msg: str):
         self._ui.statusbar.setEnabled(True)
         self._logger.debug("Status changed: %s", msg)
         self._ui.statusbar.showMessage(msg)
-
-    @pyqtSlot(QImage)
-    def _on_new_frame(self, image: np.array):
-        """
-        Set the image in the main window.
-        """
-        self._logger.debug("New frame")
-        # TODO: scaled should not be called here as it is very expensive
-        #       maybe check Qt.FastTransformation?
-        self._ui.imageLabel.setPixmap(QPixmap.fromImage(image).scaled(
-            self._ui.imageLabel.size(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation))
-
-    @pyqtSlot(float)
-    def _update_fps_label(self, fps: float):
-        self._ui.frame_rate_label.setText("Fps: " + str(round(fps, 1)))
 
     def closeEvent(self, event):
         reply = QMessageBox.question(

@@ -144,6 +144,10 @@ class VideoWriter:
         return (self._write_thread.frames_written,
                 self._write_thread.recording_time)
 
+    def release(self):
+        if self._writing:
+            self.stop_writing()
+
 
 class WriteThread(QThread):
     """Thread for consuming captured frames.

@@ -1,0 +1,359 @@
+# *****************************************************************************
+#  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
+#                                                                             *
+#  This file is part of pyOscVideo.                                           *
+#                                                                             *
+#  pyOscVideo is free software: you can redistribute it and/or modify         *
+#  it under the terms of the GNU General Public License as published by       *
+#  the Free Software Foundation, either version 3 of the License, or          *
+#  (at your option) any later version.                                        *
+#                                                                             *
+#  pyOscVideo is distributed in the hope that it will be useful,              *
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of             *
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
+#  GNU General Public License for more details.                               *
+#                                                                             *
+#  You should have received a copy of the GNU General Public License          *
+#  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.       *
+# *****************************************************************************
+
+import logging
+import queue
+import time
+import numpy as np
+
+from typing import Callable, Optional
+
+from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtGui import QImage
+from cv2.cv2 import VideoWriter_fourcc
+
+from pyoscvideo.video.camera_reader import CameraReader
+from pyoscvideo.video.video_writer import VideoWriter
+
+# TODO: Global variables should not be defined here
+#       instead use Settings Class
+# FOURCC = -1 # Should output available codecs, not working at the moment
+
+# The default codec, works on arch and mac together with .avi extensions
+FOURCC = "MJPG"
+# FOURCC = "xvid" # The default codec
+CAMERA_WIDTH = 1920
+CAMERA_HEIGHT = 1080
+FPS = 25
+
+def _generate_filename():
+    time_str = time.strftime("%Y%m%d_%H%M%S")
+    filename = "OSCVideo_Recording_" + time_str
+    return filename
+
+
+class Camera(QObject):
+    """
+    Abstracts a video streamer from webcam
+    """
+    device_id: int
+    failure: str
+    frame_counter: int
+    is_capturing: bool
+    is_recording: bool
+    name: str
+
+    def __init__(self, device_id: int, name: str):
+        """
+        Init the main controller.
+        """
+        super().__init__()
+        self._logger = logging.getLogger(__name__ + ".CameraController")
+        self._logger.info("Initializing")
+        
+        self._image_update_thread = None
+
+        self.device_id = device_id
+        self.failure = ""
+        self.frame_counter = 0
+
+        self.name = name
+
+        self.is_capturing = False
+        self.is_recording = False
+        
+        self._init_reader_and_writer()
+
+        self._fps_update_thread: Optional[UpdateFps] = None
+        self._start_fps_update_thread()
+     
+        self.set_camera(device_id)
+    
+    def _init_reader(self):
+        fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
+        # TODO: Automatically select highest resolution
+        options = {"CAP_PROP_FOURCC": fourcc,
+                   "CAP_PROP_FRAME_WIDTH": CAMERA_WIDTH,
+                   "CAP_PROP_FRAME_HEIGHT": CAMERA_HEIGHT
+                   }
+        self._camera_reader = CameraReader(self._read_queue, options)
+
+    def _init_writer(self):
+        self._writer = VideoWriter(self._write_queue,
+                                   FOURCC,
+                                   FPS,
+                                   self._camera_reader.size)
+
+    def set_camera(self, device_id):
+        self._logger.info(f"Changed camera selection to device: {device_id}")
+        self.device_id = device_id
+     
+    def _failed_capturing(self):
+        self.is_recording = False
+        self.is_capturing = False
+        self.failure = self._camera_reader.failure
+        self._logger.warning(f"Could not start capturing: {self.failure}")
+
+    def start_capturing(self) -> bool:
+        """
+        Start capturing frames from the defined source.
+
+        Creates CameraReader Object and sets the source and the state
+        TODO: add return value which indicates if capturing actually started
+        """
+        self._logger.info("Start capturing")
+
+        if self.is_capturing:
+            self._logger.warning("Already Capturing")
+            return True
+
+        if not self._camera_reader.set_camera(self.device_id):
+            self._failed_capturing()
+            return False
+
+        if self._camera_reader.ready:
+            self._start_image_update_thread()
+            self.is_capturing = True
+            return True
+
+        self._failed_capturing()
+        return False
+
+    def stop_capturing(self):
+        self._logger.info("Stopping capture")
+        self.is_capturing = False
+        self.is_recording = False
+
+        self._camera_reader.release()
+        self._writer.release()
+        self._fps_update_thread.quit()
+        if self._image_update_thread:
+            self._image_update_thread.quit()
+
+        self._init_reader_and_writer()
+
+    def _init_reader_and_writer(self):
+        self._camera_reader: Optional[CameraReader] = None
+        self._read_queue: queue.LifoQueue = queue.LifoQueue()
+        self._init_reader()
+
+        self._writer = None
+        self._write_queue: queue.LifoQueue = queue.LifoQueue()
+        self._init_writer()
+
+    def prepare_recording(self, filename: str):
+        """
+        Prepare the recording.
+
+        If not capturing yet, starts the capturing, and tries to create a file
+        with the set file extension.
+
+        TODO: provide return value indicating if preparation was successful
+        """
+        self._logger.info("Preparing recording: %s", filename)
+
+        if not self.is_capturing:
+            if not self.start_capturing():
+                return False
+
+        self._writer.size = self._camera_reader.size
+        if not self._writer.prepare_writing(filename):
+            return False
+        self._camera_reader.add_queue(self._write_queue)
+
+        return True
+
+    def _start_image_update_thread(self):
+        """Start the capturing of frames.
+
+        Spawns the image update thread.
+        """
+        if self._image_update_thread:
+            self._image_update_thread.quit()
+
+        self._image_update_thread = UpdateImage(self._read_queue)
+        self._image_update_thread.new_frame.connect(self.on_new_frame)
+
+        self._image_update_thread.start()
+ 
+    def add_update_fps_label_cb(self, callback: Callable[[float], None]):
+        """
+        Sets a function to be called with the current capture frame rate.
+        """
+        assert self._fps_update_thread is not None
+        self._fps_update_thread.updateFpsLabel.connect(callback)
+
+    def remove_update_fps_label_cb(self, callback: Callable[[float], None]):
+        """
+        Removes a previously set function to be called with the current capture
+        frame rate.
+        """
+        assert self._fps_update_thread is not None
+        self._fps_update_thread.updateFpsLabel.disconnect(callback)
+
+    def add_change_pixmap_cb(self, callback: Callable[[np.array], None]):
+        """
+        Sets a function to be called with the current captured frame as
+        argument.
+        """
+        if self._image_update_thread is None:
+            self._logger.warning("Image update thread is not running")
+            return
+        self._logger.info("Set new pixmap callback")
+        self._image_update_thread.change_pixmap.connect(callback)
+
+    def remove_change_pixmap_cb(self, callback: Callable[[np.array], None]):
+        """
+        Remove a previously set function to be called with the current captured
+        frame as argument.
+        """
+        self._image_update_thread.change_pixmap.disconnect(callback)
+
+    def _start_fps_update_thread(self):
+        """Spawn the fps update thread."""
+        self._fps_update_thread = UpdateFps(self)
+        # self._fps_update_thread.updateFpsLabel.connect(self._main_view.update_fps_label)
+        self._fps_update_thread.start()
+
+    def start_recording(self):
+        """Start the recording.
+        """
+        if self._camera_reader.ready and self._writer.ready:
+            self._writer.start_writing()
+            self.is_recording = True
+            self._logger.info("Started recording")
+            return True
+
+        self.is_recording = False
+        self._logger.warning(
+            "Could not start recording, camera reader or writer not ready")
+        return False
+
+    def stop_recording(self):
+        """Stop the recording and print out statistics.
+
+        TODO: add return values
+        """
+        if self.is_recording:
+            self.is_recording = False
+            frames_written, recording_time = self._writer.stop_writing()
+            self._camera_reader.remove_queue(self._write_queue)
+            self._logger.info("Stopped recording")
+            self._logger.info(
+                f"Recording Time: {recording_time:.1f}s")
+            self._logger.info(f"{int(frames_written)} frames written")
+            if recording_time > 0:
+                avg = frames_written / recording_time
+                self._logger.info(f"Average frame rate: {avg:.2f}")
+            # Re-init the writer
+            # TODO: review this because it doesn't seem correct to re-init
+            # it here
+            self._writer = None
+            self._init_writer()
+        else:
+            self._logger.warning("Not recording")
+
+    def on_new_frame(self):
+        self.frame_counter += 1
+
+    def cleanup(self):
+        """Perform necessary action to guarantee a clean exit of the app."""
+        self._camera_reader.release()
+        self._writer.release()
+        self._fps_update_thread.quit()
+        if self._image_update_thread:
+            self._image_update_thread.quit()
+
+
+class UpdateFps(QThread):
+    """Calculate current framerate every second and update the Fps label."""
+
+    updateFpsLabel = pyqtSignal(float)
+
+    def __init__(self, camera: Camera):
+        super().__init__()
+        self._logger = logging.getLogger(__name__ + ".UpdateFps")
+        self._time_last_update = time.time()
+        self._update_interval = 1
+        self._camera = camera
+
+    def run(self):
+        """Run the Thread worker."""
+        self._logger.info("Started fps label update thread")
+        while True:
+            time_now = time.time()
+            time_passed = time_now - self._time_last_update
+            frame_rate = float(self._camera.frame_counter / time_passed)
+            self._camera.frame_counter = 0
+            self.updateFpsLabel.emit(frame_rate)
+            self._time_last_update = time.time()
+            time.sleep(1)
+
+
+class UpdateImage(QThread):
+    """ Thread for reading frames from the source and updating the image
+    """
+    new_frame = pyqtSignal()
+    change_pixmap = pyqtSignal(QImage)
+
+    def __init__(self, frame_queue):
+        """Init the UpdateImage Thread."""
+        super().__init__()
+        self._logger = logging.getLogger(__name__ + ".UpdateImage")
+        self._queue = frame_queue
+
+    def run(self):
+        """Run the worker."""
+        self._logger.info("Started image update thread")
+
+        forward_frames = 0
+        while True:
+            frame = self._queue.get()
+            self._logger.debug("emit image")
+            image = self.cv2qt(frame)
+            self.change_pixmap.emit(image)
+            self.new_frame.emit()
+            while not self._queue.empty():
+                # discard other frames if any
+                try:
+                    self._queue.get_nowait()
+                except queue.Empty:
+                    continue
+
+    @staticmethod
+    def cv2qt(frame):
+        """Convert an image frame from cv to qt format.
+
+        Arguments:
+            frame {[type]} -- [description]
+
+        Returns:
+            [type] -- [description]
+        """
+        qt_format = QImage.Format_Indexed8
+        if len(frame.shape) == 3:
+            if frame.shape[2] == 4:
+                qt_format = QImage.Format_RGBA8888
+            else:
+                qt_format = QImage.Format_RGB888
+
+        cv_image = QImage(frame, frame.shape[1], frame.shape[0],
+                          frame.strides[0], qt_format)
+        cv_image = cv_image.rgbSwapped()
+        return cv_image

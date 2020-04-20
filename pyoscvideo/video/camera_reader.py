@@ -28,6 +28,7 @@ TODO: add proper description
 import logging
 import queue
 import numpy as np
+import cv2
 
 from typing import Any, Dict, List, Optional
 
@@ -51,6 +52,7 @@ class CameraReader:
     """
 
     stream: Optional[VideoCapture]
+    failure: str
 
     def __init__(self, frame_queue: queue.LifoQueue, options: Dict[str, Any]):
         """Init the CameraReader."""
@@ -64,14 +66,14 @@ class CameraReader:
         self._buffering = False
         self._ready = False
         self.stream = None
+        self.failure = ""
 
     @property
     def ready(self) -> bool:
         """Check if reader is ready."""
         if (
                 self.stream is not None and
-                self.stream.isOpened() and
-                self._buffering):
+                self.stream.isOpened()):
             return True
         return False
 
@@ -146,10 +148,12 @@ class CameraReader:
         """
         Open the camera with the given ID.
         """
+        self.failure = ""
         try:
             self.stream = VideoCapture(device_id)
         except RuntimeError as err:
             print(f"Could not open Camera with ID {device_id}: {err}")
+            self.failure = err
             return False
 
         self.set_camera_options(self._options)
@@ -163,7 +167,7 @@ class CameraReader:
             self.start_buffering()
             return True
 
-        self._logger.warning("Camera not Ready")
+        self._logger.warning("Camera not ready, can't open.")
         return False
 
     def set_camera_options(self, options: Dict[str, Any]) -> None:
@@ -195,7 +199,7 @@ class CameraReader:
         TODO: check if valid options, check if setting was successful
         """
         if not self.ready:
-            self._logger.warning("Camera not Ready")
+            self._logger.warning("Camera not ready, can't set options.")
             return
 
         assert self.stream is not None
