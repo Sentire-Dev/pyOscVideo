@@ -10,4 +10,4 @@ env
 pyoscvideo.code-workspace
 /.idea/*
 build
-/.mypy_cache/
+.mypy_cache/
