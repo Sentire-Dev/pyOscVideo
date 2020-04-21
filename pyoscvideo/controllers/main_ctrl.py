@@ -28,7 +28,7 @@ import queue
 import time
 import numpy as np
 
-from typing import Dict
+from typing import List
 
 from pyoscvideo.video.camera import Camera
 from pyoscvideo.models import MainModel
@@ -40,7 +40,7 @@ def _generate_filename():
     return filename
 
 
-class MainController(QObject):
+class MainController:
     """
     The main controller is responsible for keeping track of the overall state
     of the software and dealing with multiple cameras.
@@ -50,7 +50,7 @@ class MainController(QObject):
     """
     # TODO: better name than main controller
 
-    def __init__(self, cameras: Dict[int, Camera]):
+    def __init__(self, cameras: List[Camera]):
         """
         Init the main controller.
         """
@@ -82,7 +82,7 @@ class MainController(QObject):
                 if not camera.prepare_recording(f"{filename}_camera{i}.avi"):
                     return False
         else:
-            self.logger.warning("Already recording")
+            self._logger.warning("Already recording")
         return True
 
     def toggle_recording(self):
