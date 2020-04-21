@@ -157,6 +157,8 @@ class LinuxCameraSelector(BaseCameraSelector):
                 self._add_camera(device)
 
 
+# CameraSelector is a Singleton, keeping track of all
+# cameras recognized by the OS.
 CameraSelector: Type[BaseCameraSelector]
 if platform.system() == "Linux":
     CameraSelector = LinuxCameraSelector()

@@ -45,7 +45,7 @@ FPS = 25
 
 class Camera(QObject):
     """
-    Abstracts a video streamer from webcam
+    Abstracts a video streamer from a camera.
     """
     device_id: int
     failure: str
@@ -56,7 +56,8 @@ class Camera(QObject):
 
     def __init__(self, device_id: int, name: str):
         """
-        Init the main controller.
+        Init the camera object, prepare the supporting camera reader,
+        video writer and fps update threads.
         """
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".CameraController")
@@ -78,9 +79,11 @@ class Camera(QObject):
         self._fps_update_thread: Optional[UpdateFps] = None
         self._start_fps_update_thread()
 
-        self.set_camera(device_id)
-
     def _init_reader(self):
+        """
+        Initializes the CameraReader, which is responsible for managing
+        a thread for reading frames from the camera.
+        """
         fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
         # TODO: Automatically select highest resolution
         options = {"CAP_PROP_FOURCC": fourcc,
@@ -90,27 +93,30 @@ class Camera(QObject):
         self._camera_reader = CameraReader(self._read_queue, options)
 
     def _init_writer(self):
+        """
+        Initializes the VideoWriter, which is responsible for managing
+        the thread for writing frames to a file keeping constant frame rate.
+        """
         self._writer = VideoWriter(self._write_queue,
                                    FOURCC,
                                    FPS,
                                    self._camera_reader.size)
 
-    def set_camera(self, device_id):
-        self._logger.info(f"Changed camera selection to device: {device_id}")
-        self.device_id = device_id
-
     def _failed_capturing(self):
+        """
+        Called when capture failed for some reason. Updates the current status
+        and tries to gather information on the failure.
+        """
         self.is_recording = False
         self.is_capturing = False
         self.failure = self._camera_reader.failure
-        self._logger.warning(f"Could not start capturing: {self.failure}")
+        self._logger.error(f"Could not start capturing: {self.failure}")
 
     def start_capturing(self) -> bool:
         """
         Start capturing frames from the defined source.
 
         Creates CameraReader Object and sets the source and the state
-        TODO: add return value which indicates if capturing actually started
         """
         self._logger.info("Start capturing")
 
@@ -131,19 +137,24 @@ class Camera(QObject):
         return False
 
     def stop_capturing(self):
+        """
+        Stops capturing, cleans self and reinit camera reader and video writer.
+        """
         self._logger.info("Stopping capture")
         self.is_capturing = False
         self.is_recording = False
 
         self._camera_reader.release()
         self._writer.release()
-        self._fps_update_thread.quit()
         if self._image_update_thread:
             self._image_update_thread.quit()
 
         self._init_reader_and_writer()
 
     def _init_reader_and_writer(self):
+        """
+        Initializes both camera reader and video writer.
+        """
         self._camera_reader: Optional[CameraReader] = None
         self._read_queue: queue.LifoQueue = queue.LifoQueue()
         self._init_reader()
@@ -152,14 +163,12 @@ class Camera(QObject):
         self._write_queue: queue.LifoQueue = queue.LifoQueue()
         self._init_writer()
 
-    def prepare_recording(self, filename: str):
+    def prepare_recording(self, filename: str) -> bool:
         """
         Prepare the recording.
 
         If not capturing yet, starts the capturing, and tries to create a file
         with the set file extension.
-
-        TODO: provide return value indicating if preparation was successful
         """
         self._logger.info("Preparing recording: %s", filename)
 
@@ -175,7 +184,8 @@ class Camera(QObject):
         return True
 
     def _start_image_update_thread(self):
-        """Start the capturing of frames.
+        """
+        Start the capturing of frames.
 
         Spawns the image update thread.
         """
@@ -208,9 +218,8 @@ class Camera(QObject):
         argument.
         """
         if self._image_update_thread is None:
-            self._logger.warning("Image update thread is not running")
+            self._logger.error("Image update thread is not running")
             return
-        self._logger.info("Set new pixmap callback")
         self._image_update_thread.change_pixmap.connect(callback)
 
     def remove_change_pixmap_cb(self, callback: Callable[[np.array], None]):
@@ -219,7 +228,7 @@ class Camera(QObject):
         frame as argument.
         """
         if self._image_update_thread is None:
-            self._logger.warning("Image update thread is not running")
+            self._logger.error("Image update thread is not running")
             return
         self._image_update_thread.change_pixmap.disconnect(callback)
 
@@ -239,7 +248,7 @@ class Camera(QObject):
             return True
 
         self.is_recording = False
-        self._logger.warning(
+        self._logger.error(
             "Could not start recording, camera reader or writer not ready")
         return False
 
@@ -268,10 +277,15 @@ class Camera(QObject):
             self._logger.warning("Not recording")
 
     def on_new_frame(self):
+        """
+        Called when a new frame is captured by the camera reader.
+        """
         self.frame_counter += 1
 
     def cleanup(self):
-        """Perform necessary action to guarantee a clean exit of the app."""
+        """
+        Perform necessary action to guarantee a clean exit of the app.
+        """
         self._camera_reader.release()
         self._writer.release()
         self._fps_update_thread.quit()
