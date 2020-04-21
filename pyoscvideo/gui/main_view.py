@@ -2,7 +2,6 @@
 Main View
 TODO: add proper description
 """
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
