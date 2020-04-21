@@ -42,11 +42,6 @@ CAMERA_WIDTH = 1920
 CAMERA_HEIGHT = 1080
 FPS = 25
 
-def _generate_filename():
-    time_str = time.strftime("%Y%m%d_%H%M%S")
-    filename = "OSCVideo_Recording_" + time_str
-    return filename
-
 
 class Camera(QObject):
     """
@@ -66,7 +61,7 @@ class Camera(QObject):
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".CameraController")
         self._logger.info("Initializing")
-        
+
         self._image_update_thread = None
 
         self.device_id = device_id
@@ -77,14 +72,14 @@ class Camera(QObject):
 
         self.is_capturing = False
         self.is_recording = False
-        
+
         self._init_reader_and_writer()
 
         self._fps_update_thread: Optional[UpdateFps] = None
         self._start_fps_update_thread()
-     
+
         self.set_camera(device_id)
-    
+
     def _init_reader(self):
         fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
         # TODO: Automatically select highest resolution
@@ -103,7 +98,7 @@ class Camera(QObject):
     def set_camera(self, device_id):
         self._logger.info(f"Changed camera selection to device: {device_id}")
         self.device_id = device_id
-     
+
     def _failed_capturing(self):
         self.is_recording = False
         self.is_capturing = False
@@ -191,7 +186,7 @@ class Camera(QObject):
         self._image_update_thread.new_frame.connect(self.on_new_frame)
 
         self._image_update_thread.start()
- 
+
     def add_update_fps_label_cb(self, callback: Callable[[float], None]):
         """
         Sets a function to be called with the current capture frame rate.
@@ -223,6 +218,9 @@ class Camera(QObject):
         Remove a previously set function to be called with the current captured
         frame as argument.
         """
+        if self._image_update_thread is None:
+            self._logger.warning("Image update thread is not running")
+            return
         self._image_update_thread.change_pixmap.disconnect(callback)
 
     def _start_fps_update_thread(self):

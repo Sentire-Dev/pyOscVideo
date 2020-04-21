@@ -37,6 +37,7 @@ from pyoscvideo.helpers import helpers
 CAMERAS = 3
 FPS = 25
 
+
 class App(QApplication):
     """The application class for initializing the app."""
 

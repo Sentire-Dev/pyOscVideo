@@ -40,22 +40,6 @@ from pyoscvideo.video.video_writer import VideoWriter
 from pyoscvideo.helpers import helpers
 from pyoscvideo.models import MainModel
 
-# TODO: Global variables should not be defined here
-#       instead use Settings Class
-# FOURCC = -1 # Should output available codecs, not working at the moment
-
-# The default codec, works on arch and mac together with .avi extensions
-FOURCC = "MJPG"
-# FOURCC = "xvid" # The default codec
-CAMERA_WIDTH = 1920
-CAMERA_HEIGHT = 1080
-PLAY_FILENAME = "output"
-LISTEN_PORT = 1234
-FPS = 25
-TARGET_PORT = 57120
-TARGET_HOSTNAME = "localhost"
-WINDOW_NAME = "OSCVideo"
-CAMERAS = 1
 
 def _generate_filename():
     time_str = time.strftime("%Y%m%d_%H%M%S")
@@ -63,7 +47,6 @@ def _generate_filename():
     return filename
 
 
-            
 class MainController(QObject):
     """
     The main controller object.
@@ -140,7 +123,7 @@ class MainController(QObject):
         else:
             self.stop_recording()
             self.new_recording(filename)
- 
+
     def start_recording(self):
         """Stop the recording and print out statistics.
 

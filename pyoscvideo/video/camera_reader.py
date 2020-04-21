@@ -153,7 +153,7 @@ class CameraReader:
             self.stream = VideoCapture(device_id)
         except RuntimeError as err:
             print(f"Could not open Camera with ID {device_id}: {err}")
-            self.failure = err
+            self.failure = str(err)
             return False
 
         self.set_camera_options(self._options)

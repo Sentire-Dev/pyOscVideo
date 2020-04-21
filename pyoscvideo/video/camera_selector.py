@@ -23,7 +23,7 @@ import re
 import subprocess
 import sys
 
-from typing import Dict
+from typing import Dict, Type
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from pyoscvideo.video.camera import Camera
@@ -39,7 +39,7 @@ class BaseCameraSelector(QObject):
     Base class for dealing with camera selection and handling, shouldn't be
     used directly but as inherited by specialized classes depending on the
     operating system.
-    
+
     Camera Selector is responsible for keeping track of cameras
     available to capture from and keeping the current selected camera.
     """
@@ -47,30 +47,26 @@ class BaseCameraSelector(QObject):
     camera_removed = pyqtSignal(object)
     camera_added = pyqtSignal(object)
 
-    cameras: Dict[int, str]
+    cameras: Dict[int, Camera]
 
     def __init__(self) -> None:
         super().__init__()
         self._logger = logging.getLogger(__name__+".CameraSelector")
-        self._cameras: Dict[int, str] = {}
+        self.cameras = {}
 
         self.find_cameras()
 
     def add_camera(self, number: int, name: str):
         self._logger.info(f"New camera added: {name} - {number}")
-        self._cameras[number] = Camera(number, name)
-        self.camera_added.emit(self._cameras[number])
+        self.cameras[number] = Camera(number, name)
+        self.camera_added.emit(self.cameras[number])
 
     def remove_camera(self, number: int):
-        camera = self._cameras[number]
-        self._logger.info(f"Camera removed: {camera.name} - {camera.device_id}")
-        del self._cameras[number]
+        camera = self.cameras[number]
+        self._logger.info(
+                f"Camera removed: {camera.name} - {camera.device_id}")
+        del self.cameras[number]
         self.camera_removed.emit(camera)
-
-    @property
-    def cameras(self) -> Dict[int, str]:
-        return self._cameras
-
 
     def find_cameras(self):
         raise NotImplementedError
@@ -161,9 +157,8 @@ class LinuxCameraSelector(BaseCameraSelector):
                 self._add_camera(device)
 
 
+CameraSelector: Type[BaseCameraSelector]
 if platform.system() == "Linux":
-    CameraSelector: LinuxCameraSelector
     CameraSelector = LinuxCameraSelector()
 elif platform.system() == "Darwin":
-    CameraSelector: OSXCameraSelector
     CameraSelector = OSXCameraSelector()
