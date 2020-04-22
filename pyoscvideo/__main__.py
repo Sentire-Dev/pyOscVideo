@@ -1,7 +1,3 @@
-"""Entry point of the osc_video application.
-
-TODO: add file description
-"""
 
 
 # *****************************************************************************
@@ -27,12 +23,11 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
+# Initialize logging module
+from pyoscvideo.helpers import helpers
 from pyoscvideo.controllers.main_ctrl import MainController
-from pyoscvideo.video.camera_selector import CameraSelector
-from pyoscvideo.video.camera import Camera
 from pyoscvideo.gui.main_view import MainView
 from pyoscvideo.osc.interface import OSCInterface
-from pyoscvideo.helpers import helpers
 
 CAMERAS = 3
 FPS = 25
@@ -46,9 +41,7 @@ class App(QApplication):
         Init the QApplication.
         """
         super(App, self).__init__(sys_argv)
-        helpers.setup_logging()
-
-        self.main_controller = MainController(CameraSelector.cameras.values())
+        self.main_controller = MainController()
         self.main_view = MainView(self.main_controller)
         self.osc_interface = OSCInterface(self.main_controller)
         self.osc_interface.start()

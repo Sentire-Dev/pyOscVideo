@@ -60,7 +60,7 @@ class Camera(QObject):
         video writer and fps update threads.
         """
         super().__init__()
-        self._logger = logging.getLogger(__name__ + ".CameraController")
+        self._logger = logging.getLogger(__name__ + f".Camera[{name}]")
         self._logger.info("Initializing")
 
         self._image_update_thread = None
@@ -77,7 +77,6 @@ class Camera(QObject):
         self._init_reader_and_writer()
 
         self._fps_update_thread: Optional[UpdateFps] = None
-        self._start_fps_update_thread()
 
     def _init_reader(self):
         """
@@ -121,15 +120,13 @@ class Camera(QObject):
         self._logger.info("Start capturing")
 
         if self.is_capturing:
-            self._logger.warning("Already Capturing")
             return True
 
-        if not self._camera_reader.set_camera(self.device_id):
-            self._failed_capturing()
-            return False
-
-        if self._camera_reader.ready:
+        if (self._camera_reader.set_camera(self.device_id) and
+                self._camera_reader.ready):
+            self._logger.info("Capturing started")
             self._start_image_update_thread()
+            self._start_fps_update_thread()
             self.is_capturing = True
             return True
 
@@ -141,14 +138,14 @@ class Camera(QObject):
         Stops capturing, cleans self and reinit camera reader and video writer.
         """
         self._logger.info("Stopping capture")
+
+        if self.is_recording:
+            self.stop_recording()
+
+        self.cleanup()
+
+        self._image_update_thread = None
         self.is_capturing = False
-        self.is_recording = False
-
-        self._camera_reader.release()
-        self._writer.release()
-        if self._image_update_thread:
-            self._image_update_thread.quit()
-
         self._init_reader_and_writer()
 
     def _init_reader_and_writer(self):
@@ -190,11 +187,13 @@ class Camera(QObject):
         Spawns the image update thread.
         """
         if self._image_update_thread:
-            self._image_update_thread.quit()
+            self._image_update_thread.stop()
 
         self._image_update_thread = UpdateImage(self._read_queue)
-        self._image_update_thread.new_frame.connect(self.on_new_frame)
-
+        # There is an strage bug here, if we use the self.on_new_frame
+        # as callback it won't be called, but with a lambda it works
+        self._image_update_thread.new_frame.connect(
+                lambda: self.on_new_frame())
         self._image_update_thread.start()
 
     def add_update_fps_label_cb(self, callback: Callable[[float], None]):
@@ -235,7 +234,6 @@ class Camera(QObject):
     def _start_fps_update_thread(self):
         """Spawn the fps update thread."""
         self._fps_update_thread = UpdateFps(self)
-        # self._fps_update_thread.updateFpsLabel.connect(self._main_view.update_fps_label)
         self._fps_update_thread.start()
 
     def start_recording(self):
@@ -258,9 +256,9 @@ class Camera(QObject):
         TODO: add return values
         """
         if self.is_recording:
-            self.is_recording = False
             frames_written, recording_time = self._writer.stop_writing()
             self._camera_reader.remove_queue(self._write_queue)
+            self.is_recording = False
             self._logger.info("Stopped recording")
             self._logger.info(
                 f"Recording Time: {recording_time:.1f}s")
@@ -286,11 +284,20 @@ class Camera(QObject):
         """
         Perform necessary action to guarantee a clean exit of the app.
         """
+        self._camera_reader.stop_buffering()
         self._camera_reader.release()
+
         self._writer.release()
-        self._fps_update_thread.quit()
+
+        self._fps_update_thread.stop()
+        self._logger.info("wait wait fps")
+        self._fps_update_thread.wait()
+
         if self._image_update_thread:
-            self._image_update_thread.quit()
+            self._image_update_thread.stop()
+            self._logger.info("wait wait image")
+            self._image_update_thread.wait()
+        self._logger.info("cleaned up")
 
 
 class UpdateFps(QThread):
@@ -302,13 +309,16 @@ class UpdateFps(QThread):
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".UpdateFps")
         self._time_last_update = time.time()
-        self._update_interval = 1
         self._camera = camera
+        self._quit = False
+
+    def stop(self):
+        self._quit = True
 
     def run(self):
         """Run the Thread worker."""
         self._logger.info("Started fps label update thread")
-        while True:
+        while not self._quit:
             time_now = time.time()
             time_passed = time_now - self._time_last_update
             frame_rate = float(self._camera.frame_counter / time_passed)
@@ -329,14 +339,21 @@ class UpdateImage(QThread):
         super().__init__()
         self._logger = logging.getLogger(__name__ + ".UpdateImage")
         self._queue = frame_queue
+        self._quit = False
+
+    def stop(self):
+        self._quit = True
 
     def run(self):
         """Run the worker."""
         self._logger.info("Started image update thread")
 
         forward_frames = 0
-        while True:
-            frame = self._queue.get()
+        while not self._quit:
+            try:
+                frame = self._queue.get(timeout=0.2)
+            except queue.Empty:
+                self._logger.warning("Timed out waiting for a frame")
             self._logger.debug("emit image")
             image = self.cv2qt(frame)
             self.change_pixmap.emit(image)

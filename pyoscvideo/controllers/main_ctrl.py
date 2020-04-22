@@ -28,7 +28,7 @@ import queue
 import time
 import numpy as np
 
-from typing import List
+from typing import Dict
 
 from pyoscvideo.video.camera import Camera
 from pyoscvideo.models import MainModel
@@ -50,7 +50,7 @@ class MainController:
     """
     # TODO: better name than main controller
 
-    def __init__(self, cameras: List[Camera]):
+    def __init__(self):
         """
         Init the main controller.
         """
@@ -59,7 +59,33 @@ class MainController:
         self._logger.info("Initializing")
         self._model = MainModel()
 
-        self._cameras = cameras
+        self._cameras: Dict[Camera, int] = {}
+
+    def use_camera(self, camera: Camera) -> bool:
+        if camera.start_capturing():
+            camera_count = self._cameras.get(camera, 0)
+            self._cameras[camera] = camera_count + 1
+            self._logger.info(f"Using camera {camera.name}.")
+            return True
+        return False
+
+    def unuse_camera(self, camera: Camera):
+        camera_count = self._cameras.get(camera, 0)
+        self._logger.info(f"Unuse camera {camera.name}.")
+
+        # camera not in use anymore
+        if camera_count <= 1:
+            self._logger.info(
+                f"Camera {camera.name} is not used anymore, stop capturing.")
+            camera.stop_capturing()
+            del self._cameras[camera]
+            return
+
+        self._cameras[camera] = camera_count - 1
+
+    @property
+    def cameras(self):
+        return self._cameras
 
     def start_capturing(self) -> bool:
         """

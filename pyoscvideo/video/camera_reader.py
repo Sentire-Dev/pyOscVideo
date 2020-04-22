@@ -232,18 +232,19 @@ class CameraReader:
         self._logger.info("Stop buffering")
         self._buffering = False
 
-        assert self._read_thread is not None
+        if self._read_thread:
+            self._read_thread.stop = True
+            self._read_thread.quit()
+            self._read_thread.wait()
+            self._logger.info(self._read_thread.isRunning())
 
-        self._read_thread.stop = True
-        self._read_thread.quit()
-        self._read_thread.wait()
-        self._logger.info(self._read_thread.isRunning())
-
-        return self._read_thread.frames_read
+            return self._read_thread.frames_read
+        return 0
 
     def release(self):
         """Release the camera."""
-        self.stream.release()
+        if self.stream:
+            self.stream.release()
 
     def add_queue(self, frame_queue: queue.LifoQueue) -> None:
         """Add a queue to the camera reader processed queues.
