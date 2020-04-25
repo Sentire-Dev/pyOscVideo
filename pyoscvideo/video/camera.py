@@ -190,6 +190,7 @@ class Camera(QObject):
             self._image_update_thread.stop()
 
         self._image_update_thread = UpdateImage(self._read_queue)
+        # TODO:
         # There is an strage bug here, if we use the self.on_new_frame
         # as callback it won't be called, but with a lambda it works
         self._image_update_thread.new_frame.connect(
@@ -290,14 +291,11 @@ class Camera(QObject):
         self._writer.release()
 
         self._fps_update_thread.stop()
-        self._logger.info("wait wait fps")
         self._fps_update_thread.wait()
 
         if self._image_update_thread:
             self._image_update_thread.stop()
-            self._logger.info("wait wait image")
             self._image_update_thread.wait()
-        self._logger.info("cleaned up")
 
 
 class UpdateFps(QThread):

@@ -222,14 +222,13 @@ class WriteThread(QThread):
             else:
                 # get most recent frame and write it to the file stream
                 try:
-                    frame = self._queue.get_nowait()
+                    frame = self._queue.get(block=True, timeout=abs(time_difference))
                 except queue.Empty:
                     self._logger.debug(f'Queue empty, no frames available')
                     continue
 
-                if frame is not None:
-                    self._write_frame(frame)
-                    last_frame_time = time.time()
+                self._write_frame(frame)
+                last_frame_time = time.time()
 
             # afterwards discard remaining frames
             skipped_frames = 0
