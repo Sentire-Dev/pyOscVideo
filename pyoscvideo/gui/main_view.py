@@ -1,7 +1,3 @@
-"""
-Main View
-TODO: add proper description
-"""
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -31,11 +27,11 @@ from typing import Any, Callable, Dict, List, Optional
 
 from PyQt5.QtWidgets import (
         QMainWindow, QMessageBox, QLabel, QSizePolicy, QComboBox,
-        QHBoxLayout, QVBoxLayout)
+        QHBoxLayout, QVBoxLayout, QPushButton)
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QSize
 from PyQt5.QtGui import QPixmap, QImage
 
-from pyoscvideo.controllers.main_ctrl import MainController
+from pyoscvideo.video.manager import VideoManager
 from pyoscvideo.video.camera import Camera
 from pyoscvideo.video.camera_selector import CameraSelector
 from pyoscvideo.gui.main_view_ui import Ui_MainWindow
@@ -47,18 +43,18 @@ class CameraView:
     setup the callbacks for updating the image, fps and which camera to
     use.
     """
-    def __init__(self, controller: MainController,
-                 ui: Ui_MainWindow, camera: Optional[Camera] = None):
+    def __init__(self, video_manager: VideoManager,
+                 on_close: Callable, camera: Optional[Camera] = None):
         """
         Sets up the widgets and layouts for a camera in the UI and bind UI
         actions.
         """
-        self._main_controller = controller
-        widget = ui.centralwidget
+        self._video_manager = video_manager
         self._logger = logging.getLogger(
                 __name__+f".CameraView")
+        self._on_close = on_close
         vlayout = QVBoxLayout()
-        label = QLabel(widget)
+        label = QLabel()
         label.setEnabled(True)
         sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
         sp.setHorizontalStretch(0)
@@ -73,9 +69,9 @@ class CameraView:
         vlayout.addWidget(label)
 
         hlayout = QHBoxLayout()
-        combo_box = QComboBox(widget)
+        combo_box = QComboBox()
 
-        fps_label = QLabel(widget)
+        fps_label = QLabel()
         sp_fps = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         sp_fps.setHorizontalStretch(0)
         sp_fps.setVerticalStretch(0)
@@ -83,9 +79,12 @@ class CameraView:
         fps_label.setSizePolicy(sp_fps)
         fps_label.setLayoutDirection(Qt.LeftToRight)
         fps_label.setAlignment(Qt.AlignCenter)
-
+        close_button = QPushButton()
+        close_button.setText("Close")
+        close_button.clicked.connect(self._close)
         hlayout.addWidget(combo_box)
         hlayout.addWidget(fps_label)
+        hlayout.addWidget(close_button)
         vlayout.addLayout(hlayout)
 
         self.layout = vlayout
@@ -118,7 +117,7 @@ class CameraView:
 
     def _start_capturing(self):
         if self._camera:
-            if not self._main_controller.use_camera(self._camera):
+            if not self._video_manager.use_camera(self._camera):
                 self._logger.warning(f"Failed to use '{self._camera.name}'")
                 self._camera = None
                 return
@@ -159,11 +158,15 @@ class CameraView:
             Qt.KeepAspectRatio,
             Qt.FastTransformation))
 
+    def _close(self):
+        self.cleanup()
+        self._on_close(self)
+
     def cleanup(self):
         if self._camera:
             self._camera.remove_change_pixmap_cb(self._on_new_frame)
             self._camera.remove_update_fps_label_cb(self._update_fps_label)
-            self._main_controller.unuse_camera(self._camera)
+            self._video_manager.unuse_camera(self._camera)
 
 
 class MainView(QMainWindow):
@@ -172,32 +175,66 @@ class MainView(QMainWindow):
     """
     should_quit = pyqtSignal()
 
-    def __init__(self, main_controller):
+    def __init__(self, video_manager: VideoManager, num_cameras: int = 1):
         super().__init__()
         self._logger = logging.getLogger(__name__+".MainView")
 
         self._ui = Ui_MainWindow()
         self._ui.setupUi(self)
 
-        self.should_quit.connect(main_controller.cleanup)
+        self.should_quit.connect(video_manager.cleanup)
 
-        self._camera_views = []
+        self._camera_views: List[CameraView] = []
+        self._video_manager = video_manager
 
         # for now shows / uses all cameras available
-        for i, camera in enumerate(CameraSelector.cameras.values()):
-            camera_view = CameraView(main_controller, self._ui)
-            self._camera_views.append(camera_view)
-            self._ui.camerasLayout.addLayout(
-                    camera_view.layout, i // 2, i % 2, 1, 1)
+        for i in range(num_cameras):
+            self._add_camera_view()
 
-        self._ui.recordButton.clicked.connect(
-            main_controller.toggle_recording)
+        self._ui.recordButton.clicked.connect(video_manager.toggle_recording)
+        self._ui.addCamera.clicked.connect(self._add_camera_view)
+        self._ui.recordingFPS.valueChanged.connect(
+                self._video_manager.set_recording_fps)
 
-        main_controller._model.status_msg_changed.connect(self._set_status_msg)
-        main_controller._model.is_recording_changed.connect(
+        video_manager.status_msg_changed.connect(self._set_status_msg)
+        video_manager.is_recording_changed.connect(
                 self._update_recording_button)
 
+        self._ui.recordingFPS.setValue(
+                video_manager.camera_options['recording_fps'])
         self.setStatusBar(self._ui.statusbar)
+
+    def _add_camera_view(self):
+        """
+        Adds a camera view to the camera grid.
+        """
+        camera_view = CameraView(self._video_manager, self._close_camera_view)
+        self._camera_views.append(camera_view)
+        num_layouts = self._ui.camerasLayout.count()
+        self._ui.camerasLayout.addLayout(
+                camera_view.layout, num_layouts // 2, num_layouts % 2)
+
+    def _close_camera_view(self, camera_view):
+        """
+        Removes a camera view from the camera grid.
+        """
+        # TODO: check which layout is better to display the
+        # cameras, because you can't dynamically update
+        # the positions with grid layout. For now
+        # we use this recursive hack to remove all elements
+        # from the cameraview layout
+        def recursive_remove_view(layout):
+            if layout is not None:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        layout.removeWidget(widget)
+                        widget.deleteLater()
+                    else:
+                        recursive_remove_view(item.layout())
+
+        recursive_remove_view(camera_view.layout)
 
     @pyqtSlot(bool)
     def _update_recording_button(self, is_recording: bool):

@@ -23,9 +23,10 @@ import re
 import subprocess
 import sys
 
-from typing import Dict, Type
+from typing import Any, Dict, Type, Optional
 
 from PyQt5.QtCore import QObject, pyqtSignal
+
 from pyoscvideo.video.camera import Camera
 
 if platform.system() == "Linux":
@@ -48,24 +49,40 @@ class BaseCameraSelector(QObject):
     camera_added = pyqtSignal(object)
 
     cameras: Dict[int, Camera]
+    camera_options: Dict[str, Any]
 
     def __init__(self) -> None:
         super().__init__()
         self._logger = logging.getLogger(__name__+".CameraSelector")
+
+        self.camera_options: Dict[str, Any] = {}
         self.cameras = {}
 
         self.find_cameras()
 
-    def add_camera(self, number: int, name: str):
-        self._logger.info(f"New camera added: {name} - {number}")
-        self.cameras[number] = Camera(number, name)
-        self.camera_added.emit(self.cameras[number])
+    def set_recording_fps(self, value: int):
+        self.camera_options.update({'recording_fps': value})
+        for camera in self.cameras.values():
+            camera.set_recording_fps(value)
 
-    def remove_camera(self, number: int):
-        camera = self.cameras[number]
+    def add_camera(self, device_id: int, name: str):
+        """
+        Adds a camera to the list of known cameras.
+        """
+        self._logger.info(f"New camera added: {name} - {device_id}")
+
+        self.cameras[device_id] = Camera(
+                device_id,
+                name,
+                **self.camera_options)
+
+        self.camera_added.emit(self.cameras[device_id])
+
+    def remove_camera(self, device_id: int):
+        camera = self.cameras[device_id]
         self._logger.info(
                 f"Camera removed: {camera.name} - {camera.device_id}")
-        del self.cameras[number]
+        del self.cameras[device_id]
         self.camera_removed.emit(camera)
 
     def find_cameras(self):

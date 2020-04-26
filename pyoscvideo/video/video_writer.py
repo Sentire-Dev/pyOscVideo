@@ -74,6 +74,9 @@ class VideoWriter:
         # TODO: check if folder exists
         self._stop = False
 
+    def set_fps(self, fps: int):
+        self._fps = fps
+
     @property
     def size(self) -> Tuple[int, int]:
         return self._size
@@ -222,7 +225,8 @@ class WriteThread(QThread):
             else:
                 # get most recent frame and write it to the file stream
                 try:
-                    frame = self._queue.get(block=True, timeout=abs(time_difference))
+                    frame = self._queue.get(block=True,
+                                            timeout=abs(time_difference))
                 except queue.Empty:
                     self._logger.debug(f'Queue empty, no frames available')
                     continue

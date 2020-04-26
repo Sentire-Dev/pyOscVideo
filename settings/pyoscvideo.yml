@@ -1,0 +1,16 @@
+gui:
+  enabled: true
+  num_cameras: 3
+
+osc:
+  address: 0.0.0.0
+  port: 57220
+  remote_address: 127.0.0.1
+  remote_port: 57210
+
+camera:
+  recording_fps: 25
+  codec: "MJPG"
+  resolution: 
+    width: 1920
+    height: 1080

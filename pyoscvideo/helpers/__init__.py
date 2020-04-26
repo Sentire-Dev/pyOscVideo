@@ -1,5 +1,3 @@
-
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -19,50 +17,44 @@
 #  along with pyOscVideo.  If not, see <https://www.gnu.org/licenses/>.       *
 # *****************************************************************************
 
-import sys
-import signal
+from typing import Dict, Any
+from pyoscvideo.helpers import helpers
 
-from PyQt5.QtWidgets import QApplication
-
-# Initialize logging module
-from pyoscvideo.helpers import load_settings
-from pyoscvideo.video.manager import VideoManager
-from pyoscvideo.gui.main_view import MainView
-from pyoscvideo.osc.interface import OSCInterface
+import yaml
+import os.path
 
 
-class App(QApplication):
-    """The application class for initializing the app."""
+def load_settings(path: str):
+    """
+    Loads YAML settings file.
+    """
+    # Default settings:
+    settings: Dict[str, Any] = {
+            'osc': {
+                'address': '0.0.0.0',
+                'port': 57220,
+                'remote_address': '127.0.0.1',
+                'remote_port': 57210,
+                },
+            'gui': {
+                'enabled': True,
+                'num_cameras': 1,
+                },
+            'camera': {
+                'recording_fps': 25,
+                'codec': 'MJPG',
+                'resolution': {
+                    'width': 1920,
+                    'height': 1080,
+                },
+            }
+        }
 
-    def __init__(self, sys_argv):
-        """
-        Init the QApplication.
-        """
-        super(App, self).__init__(sys_argv)
+    if os.path.exists(path):
+        with open(path) as settings_file:
+            settings.update(yaml.safe_load(settings_file))
 
-        # TODO: this should be a command line option also
-        settings = load_settings("settings/pyoscvideo.yml")
-
-        self.video_manager = VideoManager(settings.get('camera', {}))
-
-        self.osc_interface = OSCInterface(
-                self.video_manager, **settings['osc'])
-        self.osc_interface.start()
-
-        if settings.get('gui', False):
-            self.main_view = MainView(self.video_manager, **settings['gui'])
-            self.main_view.show()
-        else:
-            # so ctrl+c stops the OSC thread
-            signal.signal(signal.SIGINT, signal.SIG_DFL)
-            self.osc_interface.wait()
-
-
-def main():
-    """Start the application."""
-    app = App(sys.argv)
-    app.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    main()
+    # remove GUI configuration if it is not enabled
+    if not settings.get('gui', {}).pop('enabled', True):
+        settings.pop('gui', {})
+    return settings

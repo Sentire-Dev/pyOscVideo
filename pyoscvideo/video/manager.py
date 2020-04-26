@@ -28,10 +28,11 @@ import queue
 import time
 import numpy as np
 
-from typing import Dict
+from typing import Dict, Any
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from pyoscvideo.video.camera import Camera
-from pyoscvideo.models import MainModel
+from pyoscvideo.video.camera_selector import CameraSelector
 
 
 def _generate_filename():
@@ -40,7 +41,7 @@ def _generate_filename():
     return filename
 
 
-class MainController:
+class VideoManager(QObject):
     """
     The main controller is responsible for keeping track of the overall state
     of the software and dealing with multiple cameras.
@@ -49,17 +50,49 @@ class MainController:
     for example when start to capture or record.
     """
     # TODO: better name than main controller
+    is_recording_changed = pyqtSignal(bool)
+    status_msg_changed = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, camera_options: Dict[str, Any] = {}):
         """
         Init the main controller.
         """
         super().__init__()
-        self._logger = logging.getLogger(__name__ + ".MainController")
+        self._logger = logging.getLogger(__name__ + ".VideoManager")
         self._logger.info("Initializing")
-        self._model = MainModel()
 
         self._cameras: Dict[Camera, int] = {}
+        self._is_recording = False
+        self._status_msg = ''
+
+        self.camera_options.update(camera_options)
+
+    @property
+    def is_recording(self):
+        return self._is_recording
+
+    @is_recording.setter
+    def is_recording(self, value: bool):
+        self.is_recording_changed.emit(value)
+        self._is_recording = value
+
+    @property
+    def status_msg(self):
+        return self._is_recording
+
+    @status_msg.setter
+    def status_msg(self, value: str):
+        self.status_msg_changed.emit(value)
+        self._status_msg = value
+
+    @property
+    def camera_options(self):
+        # TODO: review the responsibilities of the camera selector
+        # and the video manager
+        return CameraSelector.camera_options
+
+    def set_recording_fps(self, value):
+        CameraSelector.set_recording_fps(value)
 
     def use_camera(self, camera: Camera) -> bool:
         if camera.start_capturing():
@@ -103,7 +136,7 @@ class MainController:
         If not capturing yet, starts the capturing, and tries to create a file
         with the set file extension.
         """
-        if not self._model.is_recording:
+        if not self.is_recording:
             for i, camera in enumerate(self._cameras):
                 if not camera.prepare_recording(f"{filename}_camera{i}.avi"):
                     return False
@@ -118,7 +151,7 @@ class MainController:
         Otherwise stop the current recording.
         """
         self._logger.info("Toggle Recording")
-        if not self._model.is_recording:
+        if not self.is_recording:
             filename = _generate_filename()
             self.new_recording(filename)
         else:
@@ -139,7 +172,7 @@ class MainController:
         See Also:
             prepare_recording()
         """
-        if not self._model.is_recording:
+        if not self.is_recording:
             if self.prepare_recording(filename):
                 self.start_recording()
             else:
@@ -157,7 +190,7 @@ class MainController:
         for camera in self._cameras:
             if not camera.start_recording():
                 return False
-        self._model.is_recording = True
+        self.is_recording = True
         return True
 
     def stop_recording(self):
@@ -167,9 +200,12 @@ class MainController:
         """
         for camera in self._cameras:
             camera.stop_recording()
-        self._model.is_recording = False
+        self.is_recording = False
 
     def cleanup(self):
         """Perform necessary action to guarantee a clean exit of the app."""
+        if self.is_recording:
+            self.stop_recording()
+
         for camera in self._cameras:
             camera.cleanup()
