@@ -42,7 +42,7 @@ class OSCInterface(QThread):
                  address: str = "0.0.0.0",
                  port: int = 57220,
                  remote_address: str = "127.0.0.1",
-                 remote_port: int = 57210
+                 remote_port: int = 57120
                  ):
         super().__init__()
         self._logger = logging.getLogger(__name__+".OSCInterface")
