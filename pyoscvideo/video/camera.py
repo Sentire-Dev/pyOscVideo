@@ -74,7 +74,7 @@ class Camera(QObject):
 
         self.is_capturing = False
         self.is_recording = False
-        self._recording_fps = recording_fps
+        self.recording_fps = recording_fps
         self._codec = codec
 
         self._image_update_thread = None
@@ -88,7 +88,7 @@ class Camera(QObject):
         if self.is_recording:
             self._logger.warning("Can't set FPS while recording")
             return False
-        self._recording_fps = fps
+        self.recording_fps = fps
         self._writer.set_fps(fps)
         return True
 
@@ -106,7 +106,7 @@ class Camera(QObject):
         """
         self._writer = VideoWriter(self._write_queue,
                                    self._codec,
-                                   self._recording_fps,
+                                   self.recording_fps,
                                    self._camera_reader.size)
 
     def _failed_capturing(self):

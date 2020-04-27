@@ -125,7 +125,12 @@ class CameraView:
             self._camera.add_update_fps_label_cb(self._update_fps_label)
 
     def _update_fps_label(self, fps: float):
+        assert self._camera is not None
         self._fps_label.setText("Fps: " + str(round(fps, 1)))
+        if self._camera.recording_fps > fps:
+            self._fps_label.setStyleSheet('color: red')
+        else:
+            self._fps_label.setStyleSheet('color: black')
 
     def _add_camera_combo_box(self, camera: Camera):
         self._camera_list.append(camera)
