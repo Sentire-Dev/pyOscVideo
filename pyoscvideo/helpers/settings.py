@@ -18,10 +18,26 @@
 # *****************************************************************************
 
 from typing import Dict, Any
-from pyoscvideo.helpers import helpers
 
-import yaml
+import logging
 import os.path
+import yaml
+
+
+_logger = logging.getLogger("Settings")
+
+
+def _remove_unused_configuration(
+        loaded: Dict[str, Any],
+        default: Dict[str, Any]):
+    for k, v in list(loaded.items()):
+        if k not in default.keys():
+            # ignore settings that we don't support
+            _logger.warning(f"Unknow config option: {k}")
+            del loaded[k]
+        else:
+            if isinstance(v, dict):
+                _remove_unused_configuration(v, default[k])
 
 
 def load_settings(path: str):
@@ -52,7 +68,9 @@ def load_settings(path: str):
 
     if os.path.exists(path):
         with open(path) as settings_file:
-            settings.update(yaml.safe_load(settings_file))
+            loaded_settings = yaml.safe_load(settings_file)
+            _remove_unused_configuration(loaded_settings, settings)
+            settings.update(loaded_settings)
 
     # remove GUI configuration if it is not enabled
     if not settings.get('gui', {}).pop('enabled', True):

@@ -71,6 +71,3 @@ def get_cv_cap_property_id(cv_property):
         print('{} is not a valid OpenCV property!'.format(cv_property))
         return None
     return integer_value
-
-
-setup_logging()
