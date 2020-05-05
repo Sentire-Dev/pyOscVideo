@@ -52,7 +52,7 @@ class CameraReader:
     """
 
     stream: Optional[VideoCapture]
-    failure: str
+    fail_msg: str
 
     def __init__(self, frame_queue: queue.LifoQueue, options: Dict[str, Any]):
         """Init the CameraReader."""
@@ -66,7 +66,7 @@ class CameraReader:
         self._buffering = False
         self._ready = False
         self.stream = None
-        self.failure = ""
+        self.fail_msg = ""
 
     @property
     def ready(self) -> bool:
@@ -148,12 +148,12 @@ class CameraReader:
         """
         Open the camera with the given ID.
         """
-        self.failure = ""
+        self.fail_msg = ""
         try:
             self.stream = VideoCapture(device_id)
         except RuntimeError as err:
             print(f"Could not open Camera with ID {device_id}: {err}")
-            self.failure = str(err)
+            self.fail_msg = str(err)
             return False
 
         self.set_camera_options(self._options)
