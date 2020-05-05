@@ -277,7 +277,7 @@ class MainView(QMainWindow):
         """
         if self._ui.recordButton.isChecked() != is_recording:
             self._ui.recordButton.toggle()
-        self._ui.recordingFPS.setReadOnly(is_recording) 
+        self._ui.recordingFPS.setReadOnly(is_recording)
 
     @pyqtSlot(str)
     def _set_status_msg(self, msg: str):
