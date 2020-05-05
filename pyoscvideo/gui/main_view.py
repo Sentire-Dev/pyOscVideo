@@ -232,7 +232,7 @@ class MainView(QMainWindow):
 
         video_manager.status_msg_changed.connect(self._set_status_msg)
         video_manager.is_recording_changed.connect(
-                self._update_recording_button)
+                self._update_recording)
 
         self._ui.recordingFPS.setValue(
                 video_manager.camera_options['recording_fps'])
@@ -242,13 +242,13 @@ class MainView(QMainWindow):
         """
         Adds a camera view to the camera grid.
         """
-        camera_view = CameraView(self._video_manager, self._close_camera_view)
+        camera_view = CameraView(self._video_manager, self._remove_camera_view)
         self._camera_views.append(camera_view)
         num_layouts = self._ui.camerasLayout.count()
         self._ui.camerasLayout.addLayout(
                 camera_view.layout, num_layouts // 2, num_layouts % 2)
 
-    def _close_camera_view(self, camera_view):
+    def _remove_camera_view(self, camera_view):
         """
         Removes a camera view from the camera grid.
         """
@@ -271,12 +271,13 @@ class MainView(QMainWindow):
         recursive_remove_view(camera_view.layout)
 
     @pyqtSlot(bool)
-    def _update_recording_button(self, is_recording: bool):
+    def _update_recording(self, is_recording: bool):
         """
-        Updates the recording button to the current recording state.
+        Updates the GUI accordingly to the current recording state.
         """
         if self._ui.recordButton.isChecked() != is_recording:
             self._ui.recordButton.toggle()
+        self._ui.recordingFPS.setReadOnly(is_recording) 
 
     @pyqtSlot(str)
     def _set_status_msg(self, msg: str):
