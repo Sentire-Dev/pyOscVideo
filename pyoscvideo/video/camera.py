@@ -37,7 +37,6 @@ class Camera(QObject):
     Abstracts a video streamer from a camera.
     """
     device_id: int
-    failure: str
     frame_counter: int
     is_capturing: bool
     is_recording: bool
@@ -67,7 +66,6 @@ class Camera(QObject):
             })
 
         self.device_id = device_id
-        self.failure = ""
         self.frame_counter = 0
 
         self.name = name
@@ -109,6 +107,12 @@ class Camera(QObject):
                                    self.recording_fps,
                                    self._camera_reader.size)
 
+    @property
+    def fail_msg(self):
+        if self._camera_reader:
+            return self._camera_reader.fail_msg
+        return ""
+
     def _failed_capturing(self):
         """
         Called when capture failed for some reason. Updates the current status
@@ -116,8 +120,7 @@ class Camera(QObject):
         """
         self.is_recording = False
         self.is_capturing = False
-        self.failure = self._camera_reader.failure
-        self._logger.error(f"Could not start capturing: {self.failure}")
+        self._logger.error(f"Could not start capturing: {self.fail_msg}")
 
     def start_capturing(self) -> bool:
         """
