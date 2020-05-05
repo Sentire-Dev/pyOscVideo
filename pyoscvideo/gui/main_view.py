@@ -98,7 +98,7 @@ class CameraView:
 
         self._camera_list: List[Camera] = []
 
-        self._combo_box.insertItem(0, "------")
+        self._combo_box.insertItem(0, "No camera")
         for camera in CameraSelector.cameras.values():
             self._add_camera_combo_box(camera)
 
@@ -110,6 +110,9 @@ class CameraView:
         self._start_capturing()
 
     def _bind_actions(self):
+        """
+        Binds UI and model state changes together.
+        """
         self._combo_box.currentIndexChanged.connect(
             self._change_current_camera)
 
@@ -119,11 +122,18 @@ class CameraView:
                 self._remove_camera_combo_box)
 
     def _init_image_label(self):
+        """
+        Initializes the image placeholder when there's no camera selected.
+        """
         black_pixmap = QPixmap(400, 300)
         black_pixmap.fill(Qt.black)
         self._image_label.setPixmap(black_pixmap)
 
     def _start_capturing(self):
+        """
+        Notifies the video manager that we want to use this camera, so
+        it should start capturing.
+        """
         if self._camera:
             if not self._main_controller.use_camera(self._camera):
                 self._logger.warning(f"Failed to use '{self._camera.name}'")
@@ -133,25 +143,38 @@ class CameraView:
             self._camera.add_update_fps_label_cb(self._update_fps_label)
 
     def _update_fps_label(self, fps: float):
+        """
+        Callback to update the FPS text label.
+        """
         self._fps_label.setText("Fps: " + str(round(fps, 1)))
 
     def _add_camera_combo_box(self, camera: Camera):
+        """
+        Called when a new camera is reported by the CameraSelector.
+        """
         self._camera_list.append(camera)
         self._camera_list.sort(key=lambda e: e.name)
         idx = self._camera_list.index(camera) + 1
         self._combo_box.insertItem(idx, camera.name)
 
     def _remove_camera_combo_box(self, camera: Camera):
+        """
+        Called when a camera removal is reported by the CameraSelector.
+        """
         idx = self._camera_list.index(camera)
         del self._camera_list[idx]
         self._combo_box.removeItem(idx + 1)
 
     def _change_current_camera(self, index: int):
+        """
+        Called when the user changes the camera monitored by this CameraView.
+        """
         self._logger.info(f"Changing current camera to index: {index}")
         self.cleanup()
 
         if index == 0:
             self._camera = None
+            self._init_image_label()
             return
 
         self._camera = self._camera_list[index - 1]
@@ -167,6 +190,10 @@ class CameraView:
             Qt.FastTransformation))
 
     def cleanup(self):
+        """
+        Releases all the callbacks and report to the manager we no longer use
+        the camera.
+        """
         if self._camera:
             self._camera.remove_change_pixmap_cb(self._on_new_frame)
             self._camera.remove_update_fps_label_cb(self._update_fps_label)
@@ -208,16 +235,26 @@ class MainView(QMainWindow):
 
     @pyqtSlot(bool)
     def _update_recording_button(self, is_recording: bool):
+        """
+        Updates the recording button to the current recording state.
+        """
         if self._ui.recordButton.isChecked() != is_recording:
             self._ui.recordButton.toggle()
 
     @pyqtSlot(str)
     def _set_status_msg(self, msg: str):
+        """
+        Called when there is a new satus message.
+        Sets the message in the status bar.
+        """
         self._ui.statusbar.setEnabled(True)
         self._logger.debug("Status changed: %s", msg)
         self._ui.statusbar.showMessage(msg)
 
     def closeEvent(self, event):
+        """
+        Called when user tries to close the window, shows confirmation dialog.
+        """
         reply = QMessageBox.question(
                 self,
                 'Message',
@@ -230,6 +267,9 @@ class MainView(QMainWindow):
             event.ignore()
 
     def on_quit(self):
+        """
+        Cleans up the state, releasing all cameras before quitting.
+        """
         for camera_view in self._camera_views:
             camera_view.cleanup()
         self.should_quit.emit()
