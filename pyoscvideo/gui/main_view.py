@@ -93,6 +93,8 @@ class CameraView:
         self._image_label = label
         self._camera = camera
 
+        self._init_image_label()
+
         self._camera_list: List[Camera] = []
 
         self._combo_box.insertItem(0, "------")
@@ -114,6 +116,11 @@ class CameraView:
                 self._add_camera_combo_box)
         CameraSelector.camera_removed.connect(
                 self._remove_camera_combo_box)
+
+    def _init_image_label(self):
+        black_pixmap = QPixmap(400, 300)
+        black_pixmap.fill(Qt.black)
+        self._image_label.setPixmap(black_pixmap)
 
     def _start_capturing(self):
         if self._camera:
