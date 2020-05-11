@@ -13,7 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(730, 576)
+        MainWindow.resize(994, 785)
         MainWindow.setMinimumSize(QtCore.QSize(400, 300))
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -25,32 +25,43 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
-        self.verticalLayout = QtWidgets.QVBoxLayout()
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.camerasLayout = QtWidgets.QGridLayout()
-        self.camerasLayout.setObjectName("camerasLayout")
-        self.verticalLayout.addLayout(self.camerasLayout)
+        spacerItem = QtWidgets.QSpacerItem(10, 10, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
+        self.gridLayout.addItem(spacerItem, 0, 0, 1, 1)
         self.verticalLayout_2 = QtWidgets.QVBoxLayout()
         self.verticalLayout_2.setObjectName("verticalLayout_2")
-        spacerItem = QtWidgets.QSpacerItem(13, 13, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
-        self.verticalLayout_2.addItem(spacerItem)
+        self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
+        self.camerasLayout = QtWidgets.QGridLayout()
+        self.camerasLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
+        self.camerasLayout.setObjectName("camerasLayout")
+        self.horizontalLayout_4.addLayout(self.camerasLayout)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_4)
+        spacerItem1 = QtWidgets.QSpacerItem(13, 13, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+        self.verticalLayout_2.addItem(spacerItem1)
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
+        self.horizontalLayout_2.setContentsMargins(-1, -1, -1, 0)
+        self.horizontalLayout_2.setSpacing(6)
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        spacerItem2 = QtWidgets.QSpacerItem(13, 13, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem2)
         self.recordButton = QtWidgets.QPushButton(self.centralwidget)
         self.recordButton.setEnabled(True)
         self.recordButton.setAutoFillBackground(False)
-        self.recordButton.setStyleSheet("QPushButton#recordButton { \n"
+        self.recordButton.setStyleSheet("QPushButton#recordButton {\n"
 "}\n"
 "QPushButton#recordButton:disabled {\n"
-"    color: grey; \n"
+"    color: grey;\n"
 "}\n"
 "QPushButton#recordButton:pressed {\n"
 "}\n"
-"QPushButton#recordButton:focus:pressed { \n"
+"QPushButton#recordButton:focus:pressed {\n"
 " }\n"
-"QPushButton#recordButton:focus { \n"
+"QPushButton#recordButton:focus {\n"
 "}\n"
 "QPushButton#recordButton:hover {\n"
 " }\n"
-"QPushButton#recordButton:checked { \n"
+"QPushButton#recordButton:checked {\n"
 "    background-color: red;\n"
 " }")
         self.recordButton.setCheckable(True)
@@ -60,24 +71,16 @@ class Ui_MainWindow(object):
         self.recordButton.setDefault(False)
         self.recordButton.setFlat(False)
         self.recordButton.setObjectName("recordButton")
-        self.verticalLayout_2.addWidget(self.recordButton)
-        spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.verticalLayout_2.addItem(spacerItem1)
-        spacerItem2 = QtWidgets.QSpacerItem(13, 13, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
-        self.verticalLayout_2.addItem(spacerItem2)
-        self.verticalLayout.addLayout(self.verticalLayout_2)
-        self.gridLayout.addLayout(self.verticalLayout, 0, 0, 1, 1)
-        spacerItem3 = QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.gridLayout.addItem(spacerItem3, 3, 1, 1, 1)
-        spacerItem4 = QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
-        self.gridLayout.addItem(spacerItem4, 1, 2, 1, 1)
-        spacerItem5 = QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
-        self.gridLayout.addItem(spacerItem5, 1, 0, 1, 1)
-        spacerItem6 = QtWidgets.QSpacerItem(5, 5, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
-        self.gridLayout.addItem(spacerItem6, 0, 1, 1, 1)
+        self.horizontalLayout_2.addWidget(self.recordButton)
+        spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.horizontalLayout_2.addItem(spacerItem3)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_2)
+        self.gridLayout.addLayout(self.verticalLayout_2, 0, 1, 1, 1)
+        spacerItem4 = QtWidgets.QSpacerItem(10, 10, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
+        self.gridLayout.addItem(spacerItem4, 0, 2, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 730, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 994, 33))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -89,5 +92,5 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "pyOscVIdeo"))
         self.recordButton.setText(_translate("MainWindow", "Record"))

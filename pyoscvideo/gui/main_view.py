@@ -1,7 +1,3 @@
-"""
-Main View
-TODO: add proper description
-"""
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -39,165 +35,7 @@ from pyoscvideo.controllers.main_ctrl import MainController
 from pyoscvideo.video.camera import Camera
 from pyoscvideo.video.camera_selector import CameraSelector
 from pyoscvideo.gui.main_view_ui import Ui_MainWindow
-
-
-class CameraView:
-    """
-    CameraView is responsible for constructing the UI for a camera and
-    setup the callbacks for updating the image, fps and which camera to
-    use.
-    """
-    def __init__(self, controller: MainController,
-                 ui: Ui_MainWindow, camera: Optional[Camera] = None):
-        """
-        Sets up the widgets and layouts for a camera in the UI and bind UI
-        actions.
-        """
-        self._main_controller = controller
-        widget = ui.centralwidget
-        self._logger = logging.getLogger(
-                __name__+f".CameraView")
-        vlayout = QVBoxLayout()
-        label = QLabel(widget)
-        label.setEnabled(True)
-        sp = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
-        sp.setHorizontalStretch(0)
-        sp.setVerticalStretch(0)
-        sp.setHeightForWidth(label.sizePolicy().hasHeightForWidth())
-        label.setSizePolicy(sp)
-        label.setMinimumSize(QSize(1, 1))
-        label.setSizeIncrement(QSize(0, 0))
-        label.setLayoutDirection(Qt.LeftToRight)
-        label.setScaledContents(False)
-        label.setAlignment(Qt.AlignCenter)
-        vlayout.addWidget(label)
-
-        hlayout = QHBoxLayout()
-        combo_box = QComboBox(widget)
-
-        fps_label = QLabel(widget)
-        sp_fps = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
-        sp_fps.setHorizontalStretch(0)
-        sp_fps.setVerticalStretch(0)
-        sp_fps.setHeightForWidth(fps_label.sizePolicy().hasHeightForWidth())
-        fps_label.setSizePolicy(sp_fps)
-        fps_label.setLayoutDirection(Qt.LeftToRight)
-        fps_label.setAlignment(Qt.AlignCenter)
-
-        hlayout.addWidget(combo_box)
-        hlayout.addWidget(fps_label)
-        vlayout.addLayout(hlayout)
-
-        self.layout = vlayout
-        self._fps_label = fps_label
-        self._combo_box = combo_box
-        self._image_label = label
-        self._camera = camera
-
-        self._init_image_label()
-
-        self._camera_list: List[Camera] = []
-
-        self._combo_box.insertItem(0, "No camera")
-        for camera in CameraSelector.cameras.values():
-            self._add_camera_combo_box(camera)
-
-        if self._camera is not None:
-            self._combo_box.setCurrentIndex(
-                    self._camera_list.index(self._camera) + 1)
-
-        self._bind_actions()
-        self._start_capturing()
-
-    def _bind_actions(self):
-        """
-        Binds UI and model state changes together.
-        """
-        self._combo_box.currentIndexChanged.connect(
-            self._change_current_camera)
-
-        CameraSelector.camera_added.connect(
-                self._add_camera_combo_box)
-        CameraSelector.camera_removed.connect(
-                self._remove_camera_combo_box)
-
-    def _init_image_label(self):
-        """
-        Initializes the image placeholder when there's no camera selected.
-        """
-        black_pixmap = QPixmap(400, 300)
-        black_pixmap.fill(Qt.black)
-        self._image_label.setPixmap(black_pixmap)
-
-    def _start_capturing(self):
-        """
-        Notifies the video manager that we want to use this camera, so
-        it should start capturing.
-        """
-        if self._camera:
-            if not self._main_controller.use_camera(self._camera):
-                self._logger.warning(f"Failed to use '{self._camera.name}'")
-                self._camera = None
-                return
-            self._camera.add_change_pixmap_cb(self._on_new_frame)
-            self._camera.add_update_fps_label_cb(self._update_fps_label)
-
-    def _update_fps_label(self, fps: float):
-        """
-        Callback to update the FPS text label.
-        """
-        self._fps_label.setText("Fps: " + str(round(fps, 1)))
-
-    def _add_camera_combo_box(self, camera: Camera):
-        """
-        Called when a new camera is reported by the CameraSelector.
-        """
-        self._camera_list.append(camera)
-        self._camera_list.sort(key=lambda e: e.name)
-        idx = self._camera_list.index(camera) + 1
-        self._combo_box.insertItem(idx, camera.name)
-
-    def _remove_camera_combo_box(self, camera: Camera):
-        """
-        Called when a camera removal is reported by the CameraSelector.
-        """
-        idx = self._camera_list.index(camera)
-        del self._camera_list[idx]
-        self._combo_box.removeItem(idx + 1)
-
-    def _change_current_camera(self, index: int):
-        """
-        Called when the user changes the camera monitored by this CameraView.
-        """
-        self._logger.info(f"Changing current camera to index: {index}")
-        self.cleanup()
-
-        if index == 0:
-            self._camera = None
-            self._init_image_label()
-            return
-
-        self._camera = self._camera_list[index - 1]
-        self._start_capturing()
-
-    def _on_new_frame(self, image: np.array):
-        """
-        Set the image in the main window.
-        """
-        self._image_label.setPixmap(QPixmap.fromImage(image).scaled(
-            self._image_label.size(),
-            Qt.KeepAspectRatio,
-            Qt.FastTransformation))
-
-    def cleanup(self):
-        """
-        Releases all the callbacks and report to the manager we no longer use
-        the camera.
-        """
-        if self._camera:
-            self._camera.remove_change_pixmap_cb(self._on_new_frame)
-            self._camera.remove_update_fps_label_cb(self._update_fps_label)
-            self._main_controller.unuse_camera(self._camera)
+from pyoscvideo.gui.camera_view import CameraView
 
 
 class MainView(QMainWindow):
@@ -219,10 +57,11 @@ class MainView(QMainWindow):
 
         # for now shows / uses all cameras available
         for i, camera in enumerate(CameraSelector.cameras.values()):
-            camera_view = CameraView(main_controller, self._ui)
+            self._logger.info("Adding Camera View")
+            camera_view = CameraView(main_controller, self._ui.camerasLayout)
+            camera_view.show()
             self._camera_views.append(camera_view)
-            self._ui.camerasLayout.addLayout(
-                    camera_view.layout, i // 2, i % 2, 1, 1)
+            self._ui.camerasLayout.addWidget(camera_view)
 
         self._ui.recordButton.clicked.connect(
             main_controller.toggle_recording)
