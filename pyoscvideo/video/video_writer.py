@@ -66,9 +66,6 @@ class VideoWriter:
         # TODO: check if folder exists
         self._stop = False
 
-    def set_fps(self, fps: int):
-        self._fps = fps
-
     @property
     def size(self) -> Tuple[int, int]:
         return self._size

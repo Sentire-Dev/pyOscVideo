@@ -49,21 +49,15 @@ class BaseCameraSelector(QObject):
     camera_added = pyqtSignal(object)
 
     cameras: Dict[int, Camera]
-    camera_options: Dict[str, Any]
 
-    def __init__(self) -> None:
+    def __init__(self, camera_options: Dict[str, Any]) -> None:
         super().__init__()
         self._logger = logging.getLogger(__name__+".CameraSelector")
 
-        self.camera_options: Dict[str, Any] = {}
+        self.camera_options = camera_options
         self.cameras = {}
 
         self.find_cameras()
-
-    def set_recording_fps(self, value: int):
-        self.camera_options.update({'recording_fps': value})
-        for camera in self.cameras.values():
-            camera.set_recording_fps(value)
 
     def add_camera(self, device_id: int, name: str):
         """
@@ -116,12 +110,12 @@ class LinuxCameraSelector(BaseCameraSelector):
     """
     Specialized camera selector for Linux operating system. Uses udev.
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # Sets up udev context so we can find cameras
         self._udev_ctx = pyudev.Context()
         self._udev_observer = None
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
         # Start observing for new cameras added or removed
         self._setup_udev_observer()
@@ -174,10 +168,8 @@ class LinuxCameraSelector(BaseCameraSelector):
                 self._add_camera(device)
 
 
-# CameraSelector is a Singleton, keeping track of all
-# cameras recognized by the OS.
 CameraSelector: Type[BaseCameraSelector]
 if platform.system() == "Linux":
-    CameraSelector = LinuxCameraSelector()
+    CameraSelector = LinuxCameraSelector
 elif platform.system() == "Darwin":
-    CameraSelector = OSXCameraSelector()
+    CameraSelector = OSXCameraSelector

@@ -23,13 +23,13 @@ from typing import List, Optional
 import numpy as np
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QComboBox, QHBoxLayout, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import (QLabel, QSizePolicy, QComboBox,
+                             QHBoxLayout, QVBoxLayout, QWidget)
 
 from pyoscvideo.video.manager import VideoManager
 from pyoscvideo.gui.camera_view_ui import Ui_CameraView
 from pyoscvideo.gui.main_view_ui import Ui_MainWindow
 from pyoscvideo.video.camera import Camera
-from pyoscvideo.video.camera_selector import CameraSelector
 
 
 class CameraView(QWidget):
@@ -40,7 +40,8 @@ class CameraView(QWidget):
     """
     _camera: Optional[Camera]
 
-    def __init__(self, controller: VideoManager, ui: Ui_MainWindow, camera: Optional[Camera] = None):
+    def __init__(self, video_manager: VideoManager, ui: Ui_MainWindow,
+                 camera: Optional[Camera] = None):
         """
         Sets up the widgets and layouts for a camera in the UI and bind UI
         actions.
@@ -53,7 +54,7 @@ class CameraView(QWidget):
         self._logger.info("Initializing")
         self._ui = Ui_CameraView()
         self._ui.setupUi(self)
-        self._main_controller = controller
+        self._video_manager = video_manager
 
     #     self.layout = vlayout
     #     self._ui.frameRateLabel = fps_label
@@ -66,7 +67,7 @@ class CameraView(QWidget):
         self._camera_list: List[Camera] = []
 
         self._ui.cameraSelectionComboBox.insertItem(0, "No camera")
-        for camera in CameraSelector.cameras.values():
+        for camera in self._video_manager.camera_selector.cameras.values():
             self._add_camera_combo_box(camera)
 
         if self._camera is not None:
@@ -83,9 +84,9 @@ class CameraView(QWidget):
         self._ui.cameraSelectionComboBox.currentIndexChanged.connect(
             self._change_current_camera)
 
-        CameraSelector.camera_added.connect(
+        self._video_manager.camera_selector.camera_added.connect(
             self._add_camera_combo_box)
-        CameraSelector.camera_removed.connect(
+        self._video_manager.camera_selector.camera_removed.connect(
             self._remove_camera_combo_box)
 
     def _init_image_label(self):
@@ -102,7 +103,7 @@ class CameraView(QWidget):
         it should start capturing.
         """
         if self._camera:
-            if not self._main_controller.use_camera(self._camera):
+            if not self._video_manager.use_camera(self._camera):
                 self._logger.warning(f"Failed to use '{self._camera.name}'")
                 self._camera = None
                 return
@@ -118,9 +119,9 @@ class CameraView(QWidget):
         assert self._camera is not None
 
         if self._camera.recording_fps > fps:
-            self._fps_label.setStyleSheet('color: red')
+            self._ui.frameRateLabel.setStyleSheet('color: red')
         else:
-            self._fps_label.setStyleSheet('color: black')
+            self._ui.frameRateLabel.setStyleSheet('color: black')
 
     def _add_camera_combo_box(self, camera: Camera):
         """
@@ -171,4 +172,4 @@ class CameraView(QWidget):
         if self._camera:
             self._camera.remove_change_pixmap_cb(self._on_new_frame)
             self._camera.remove_update_fps_label_cb(self._update_fps_label)
-            self._main_controller.unuse_camera(self._camera)
+            self._video_manager.unuse_camera(self._camera)

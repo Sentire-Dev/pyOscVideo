@@ -54,11 +54,12 @@ class Camera(QObject):
         self._logger = logging.getLogger(__name__ + f".Camera[{name}]")
         self._logger.info("Initializing")
 
-        fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
+        self._codec = codec
+        fourcc = VideoWriter_fourcc(*codec)
         self._options = {
             "CAP_PROP_FOURCC": fourcc,
             }
-        # TODO: Automatically select highest resolution
+
         if resolution:
             self._options.update({
                 "CAP_PROP_FRAME_WIDTH": resolution["width"],
@@ -73,22 +74,10 @@ class Camera(QObject):
         self.is_capturing = False
         self.is_recording = False
         self.recording_fps = recording_fps
-        self._codec = codec
 
         self._image_update_thread = None
         self._init_reader_and_writer()
         self._fps_update_thread: Optional[UpdateFps] = None
-
-    def set_recording_fps(self, fps: int) -> bool:
-        """
-        Sets the recording frame rate.
-        """
-        if self.is_recording:
-            self._logger.warning("Can't set FPS while recording")
-            return False
-        self.recording_fps = fps
-        self._writer.set_fps(fps)
-        return True
 
     def _init_reader(self):
         """

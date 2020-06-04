@@ -24,11 +24,11 @@ import queue
 import time
 import numpy as np
 
-from typing import Dict, Any
+from typing import Dict, Any, Type
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from pyoscvideo.video.camera import Camera
-from pyoscvideo.video.camera_selector import CameraSelector
+from pyoscvideo.video.camera_selector import CameraSelector, BaseCameraSelector
 
 
 def _generate_filename():
@@ -42,14 +42,13 @@ class VideoManager(QObject):
     The main controller is responsible for keeping track of the overall state
     of the software and dealing with multiple cameras.
 
-    Most methods will call a similar method for each of the cameras in use,
-    for example when start to capture or record.
+    Most methods will pass on the call for each camera in use.
     """
     # TODO: better name than main controller
     is_recording_changed = pyqtSignal(bool)
     status_msg_changed = pyqtSignal(str)
 
-    def __init__(self, camera_options: Dict[str, Any] = {}):
+    def __init__(self, camera_selector: Type[BaseCameraSelector]):
         """
         Init the main controller.
         """
@@ -61,7 +60,7 @@ class VideoManager(QObject):
         self._is_recording = False
         self._status_msg = ''
 
-        self.camera_options.update(camera_options)
+        self.camera_selector = camera_selector
 
     @property
     def is_recording(self):
@@ -80,15 +79,6 @@ class VideoManager(QObject):
     def status_msg(self, value: str):
         self.status_msg_changed.emit(value)
         self._status_msg = value
-
-    @property
-    def camera_options(self):
-        # TODO: review the responsibilities of the camera selector
-        # and the video manager
-        return CameraSelector.camera_options
-
-    def set_recording_fps(self, value):
-        CameraSelector.set_recording_fps(value)
 
     def use_camera(self, camera: Camera) -> bool:
         if camera.start_capturing():

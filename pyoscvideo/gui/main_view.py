@@ -33,7 +33,6 @@ from PyQt5.QtGui import QPixmap, QImage
 
 from pyoscvideo.video.manager import VideoManager
 from pyoscvideo.video.camera import Camera
-from pyoscvideo.video.camera_selector import CameraSelector
 from pyoscvideo.gui.main_view_ui import Ui_MainWindow
 from pyoscvideo.gui.camera_view import CameraView
 
@@ -128,6 +127,18 @@ class MainView(QMainWindow):
                 "Are you sure to quit?", QMessageBox.Yes, QMessageBox.No)
 
         if reply == QMessageBox.Yes:
+            if self._video_manager.is_recording:
+                confirm = QMessageBox.warning(
+                    self,
+                    'Message',
+                    "You are currently recording, "
+                    "are you sure you want to quit?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+
+                if confirm == QMessageBox.No:
+                    event.ignore()
+                    return
+
             self.on_quit()
             event.accept()
         else:
