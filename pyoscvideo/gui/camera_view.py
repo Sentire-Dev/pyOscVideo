@@ -115,6 +115,13 @@ class CameraView(QWidget):
         """
         self._ui.frameRateLabel.setText("Fps: " + str(round(fps, 1)))
 
+        assert self._camera is not None
+
+        if self._camera.recording_fps > fps:
+            self._fps_label.setStyleSheet('color: red')
+        else:
+            self._fps_label.setStyleSheet('color: black')
+
     def _add_camera_combo_box(self, camera: Camera):
         """
         Called when a new camera is reported by the CameraSelector.
