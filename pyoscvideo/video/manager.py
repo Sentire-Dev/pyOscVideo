@@ -18,10 +18,6 @@
 # *****************************************************************************
 
 # pylint: disable=trailing-whitespace
-"""Source Code for the MainController Class of the pyoscvideo module.
-
-TODO: add proper file description
-"""
 
 import logging
 import queue
