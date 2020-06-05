@@ -22,7 +22,7 @@ import queue
 import time
 import numpy as np
 
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
@@ -30,17 +30,6 @@ from cv2.cv2 import VideoWriter_fourcc
 
 from pyoscvideo.video.camera_reader import CameraReader
 from pyoscvideo.video.video_writer import VideoWriter
-
-# TODO: Global variables should not be defined here
-#       instead use Settings Class
-# FOURCC = -1 # Should output available codecs, not working at the moment
-
-# The default codec, works on arch and mac together with .avi extensions
-FOURCC = "MJPG"
-# FOURCC = "xvid" # The default codec
-CAMERA_WIDTH = 1920
-CAMERA_HEIGHT = 1080
-FPS = 25
 
 
 class Camera(QObject):
@@ -52,8 +41,11 @@ class Camera(QObject):
     is_capturing: bool
     is_recording: bool
     name: str
+    recording_fps: int
 
-    def __init__(self, device_id: int, name: str):
+    def __init__(self, device_id: int, name: str,
+                 resolution: Optional[Dict[str, int]] = None,
+                 codec: str = "MJPG", recording_fps: int = 25):
         """
         Init the camera object, prepare the supporting camera reader,
         video writer and fps update threads.
@@ -62,7 +54,17 @@ class Camera(QObject):
         self._logger = logging.getLogger(__name__ + f".Camera[{name}]")
         self._logger.info("Initializing")
 
-        self._image_update_thread = None
+        self._codec = codec
+        fourcc = VideoWriter_fourcc(*codec)
+        self._options = {
+            "CAP_PROP_FOURCC": fourcc,
+            }
+
+        if resolution:
+            self._options.update({
+                "CAP_PROP_FRAME_WIDTH": resolution["width"],
+                "CAP_PROP_FRAME_HEIGHT": resolution["height"],
+            })
 
         self.device_id = device_id
         self.frame_counter = 0
@@ -71,9 +73,10 @@ class Camera(QObject):
 
         self.is_capturing = False
         self.is_recording = False
+        self.recording_fps = recording_fps
 
+        self._image_update_thread = None
         self._init_reader_and_writer()
-
         self._fps_update_thread: Optional[UpdateFps] = None
 
     def _init_reader(self):
@@ -81,13 +84,7 @@ class Camera(QObject):
         Initializes the CameraReader, which is responsible for managing
         a thread for reading frames from the camera.
         """
-        fourcc = VideoWriter_fourcc('M', 'J', 'P', 'G')
-        # TODO: Automatically select highest resolution
-        options = {"CAP_PROP_FOURCC": fourcc,
-                   "CAP_PROP_FRAME_WIDTH": CAMERA_WIDTH,
-                   "CAP_PROP_FRAME_HEIGHT": CAMERA_HEIGHT
-                   }
-        self._camera_reader = CameraReader(self._read_queue, options)
+        self._camera_reader = CameraReader(self._read_queue, self._options)
 
     def _init_writer(self):
         """
@@ -95,8 +92,8 @@ class Camera(QObject):
         the thread for writing frames to a file keeping constant frame rate.
         """
         self._writer = VideoWriter(self._write_queue,
-                                   FOURCC,
-                                   FPS,
+                                   self._codec,
+                                   self.recording_fps,
                                    self._camera_reader.size)
 
     @property

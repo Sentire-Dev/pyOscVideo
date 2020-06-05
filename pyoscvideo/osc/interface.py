@@ -26,23 +26,32 @@ from pythonosc.udp_client import SimpleUDPClient
 
 from PyQt5.QtCore import QThread
 
-from pyoscvideo.controllers.main_ctrl import MainController
+from pyoscvideo.video.manager import VideoManager
 
 import asyncio
 import logging
 
 
 class OSCInterface(QThread):
+    """
+    Spawns a thread for sending and receiving OSC messages to
+    stop and start the recorder.
+    """
     def __init__(self,
-                 controller: MainController,
+                 video_manager: VideoManager,
                  address: str = "0.0.0.0",
-                 port: int = 57220):
+                 port: int = 57220,
+                 remote_address: str = "127.0.0.1",
+                 remote_port: int = 57120
+                 ):
         super().__init__()
         self._logger = logging.getLogger(__name__+".OSCInterface")
         self._logger.info("Initializing OSC thread")
-        self._controller = controller
+        self._video_manager = video_manager
         self._address = address
         self._port = port
+        self._remote_address = remote_address
+        self._remote_port = remote_port
 
         self.server: AsyncIOOSCUDPServer = None
         self.client: SimpleUDPClient = None
@@ -57,7 +66,7 @@ class OSCInterface(QThread):
                 f"Prepare recording with filename: {filename}")
         if not filename:
             self._logger.warning("No filename argument")
-        elif self._controller.prepare_recording(filename):
+        elif self._video_manager.prepare_recording(filename):
             self._send_message("/oscVideo/status",
                                (True, "Prepared Recording"))
         else:
@@ -69,14 +78,14 @@ class OSCInterface(QThread):
             self._logger.warning(f"No argument sent, expecting "
                                  f"a boolean to start or stop recording")
         elif record:
-            if self._controller.start_recording():
+            if self._video_manager.start_recording():
                 self._send_message("/oscVideo/status",
                                    (True, "Started Recording"))
             else:
                 self._send_message("/oscVideo/status",
                                    (False, "Couldn't start recording"))
         else:
-            self._controller.stop_recording()
+            self._video_manager.stop_recording()
             self._send_message("/oscVideo/status",
                                (True, "Stopped Recording"))
 
@@ -89,7 +98,7 @@ class OSCInterface(QThread):
         dispatcher = Dispatcher()
         self.server = AsyncIOOSCUDPServer((self._address, self._port),
                                           dispatcher, loop)
-        self.client = SimpleUDPClient("127.0.0.1", 57120)
+        self.client = SimpleUDPClient(self._remote_address, self._remote_port)
 
         dispatcher.map("/oscVideo/prepareRecording",
                        self._prepare_recording)

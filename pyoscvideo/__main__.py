@@ -20,17 +20,13 @@
 # *****************************************************************************
 
 import sys
+import signal
 
 from PyQt5.QtWidgets import QApplication
 
 # Initialize logging module
-from pyoscvideo.helpers import helpers
-from pyoscvideo.controllers.main_ctrl import MainController
-from pyoscvideo.gui.main_view import MainView
-from pyoscvideo.osc.interface import OSCInterface
-
-CAMERAS = 3
-FPS = 25
+from pyoscvideo.helpers.helpers import setup_logging
+from pyoscvideo.helpers.settings import load_settings
 
 
 class App(QApplication):
@@ -41,12 +37,34 @@ class App(QApplication):
         Init the QApplication.
         """
         super(App, self).__init__(sys_argv)
-        self.main_controller = MainController()
-        self.main_view = MainView(self.main_controller)
-        self.osc_interface = OSCInterface(self.main_controller)
+
+        # Setup logging mechanism
+        setup_logging()
+
+        # TODO: this should be a command line option also
+        settings = load_settings("settings/pyoscvideo.yml")
+
+        # Only loads main modules after settings have been successfuly loaded
+        from pyoscvideo.video.camera_selector import CameraSelector
+        from pyoscvideo.video.manager import VideoManager
+        from pyoscvideo.gui.main_view import MainView
+        from pyoscvideo.osc.interface import OSCInterface
+
+        camera_selector = CameraSelector(settings.get('camera', {}))
+        self.video_manager = VideoManager(camera_selector)
+        self.osc_interface = OSCInterface(
+                self.video_manager, **settings['osc'])
         self.osc_interface.start()
 
-        self.main_view.show()
+        if settings.get('gui', None) is not None:
+            # Should load gui
+            self.main_view = MainView(self.video_manager, **settings['gui'])
+            self.main_view.show()
+        else:
+            # no gui, main loop is handled by the OSCInterface thread
+            # so we need to listen to ctrl+c to stop the OSC thread
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            self.osc_interface.wait()
 
 
 def main():

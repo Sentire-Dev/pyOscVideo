@@ -1,11 +1,3 @@
-"""video_writer library source code.
-
-video_writer provides a Class for threaded recording from a web cam qt quasi
-constant framerate. It uses cv2.VideoCapture and cv2.VideoWriter
-
-    TODO: update description
-"""
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
