@@ -1,9 +1,3 @@
-"""Source code for CameraReader class.
-
-CameraReader handles reading frames from a camera
-TODO: add proper description
-"""
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -28,6 +22,7 @@ TODO: add proper description
 import logging
 import queue
 import numpy as np
+import cv2
 
 from typing import Any, Dict, List, Optional
 
@@ -51,6 +46,7 @@ class CameraReader:
     """
 
     stream: Optional[VideoCapture]
+    fail_msg: str
 
     def __init__(self, frame_queue: queue.LifoQueue, options: Dict[str, Any]):
         """Init the CameraReader."""
@@ -64,14 +60,14 @@ class CameraReader:
         self._buffering = False
         self._ready = False
         self.stream = None
+        self.fail_msg = ""
 
     @property
     def ready(self) -> bool:
         """Check if reader is ready."""
         if (
                 self.stream is not None and
-                self.stream.isOpened() and
-                self._buffering):
+                self.stream.isOpened()):
             return True
         return False
 
@@ -146,10 +142,12 @@ class CameraReader:
         """
         Open the camera with the given ID.
         """
+        self.fail_msg = ""
         try:
             self.stream = VideoCapture(device_id)
         except RuntimeError as err:
             print(f"Could not open Camera with ID {device_id}: {err}")
+            self.fail_msg = str(err)
             return False
 
         self.set_camera_options(self._options)
@@ -163,7 +161,7 @@ class CameraReader:
             self.start_buffering()
             return True
 
-        self._logger.warning("Camera not Ready")
+        self._logger.warning("Camera not ready, can't open.")
         return False
 
     def set_camera_options(self, options: Dict[str, Any]) -> None:
@@ -195,7 +193,7 @@ class CameraReader:
         TODO: check if valid options, check if setting was successful
         """
         if not self.ready:
-            self._logger.warning("Camera not Ready")
+            self._logger.warning("Camera not ready, can't set options.")
             return
 
         assert self.stream is not None
@@ -228,18 +226,19 @@ class CameraReader:
         self._logger.info("Stop buffering")
         self._buffering = False
 
-        assert self._read_thread is not None
+        if self._read_thread:
+            self._read_thread.stop = True
+            self._read_thread.quit()
+            self._read_thread.wait()
+            self._logger.info(self._read_thread.isRunning())
 
-        self._read_thread.stop = True
-        self._read_thread.quit()
-        self._read_thread.wait()
-        self._logger.info(self._read_thread.isRunning())
-
-        return self._read_thread.frames_read
+            return self._read_thread.frames_read
+        return 0
 
     def release(self):
         """Release the camera."""
-        self.stream.release()
+        if self.stream:
+            self.stream.release()
 
     def add_queue(self, frame_queue: queue.LifoQueue) -> None:
         """Add a queue to the camera reader processed queues.

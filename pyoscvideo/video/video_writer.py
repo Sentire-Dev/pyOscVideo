@@ -1,11 +1,3 @@
-"""video_writer library source code.
-
-video_writer provides a Class for threaded recording from a web cam qt quasi
-constant framerate. It uses cv2.VideoCapture and cv2.VideoWriter
-
-    TODO: update description
-"""
-
 # *****************************************************************************
 #  Copyright (c) 2020. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
@@ -144,6 +136,10 @@ class VideoWriter:
         return (self._write_thread.frames_written,
                 self._write_thread.recording_time)
 
+    def release(self):
+        if self._writing:
+            self.stop_writing()
+
 
 class WriteThread(QThread):
     """Thread for consuming captured frames.
@@ -218,14 +214,14 @@ class WriteThread(QThread):
             else:
                 # get most recent frame and write it to the file stream
                 try:
-                    frame = self._queue.get_nowait()
+                    frame = self._queue.get(block=True,
+                                            timeout=abs(time_difference))
                 except queue.Empty:
                     self._logger.debug(f'Queue empty, no frames available')
                     continue
 
-                if frame is not None:
-                    self._write_frame(frame)
-                    last_frame_time = time.time()
+                self._write_frame(frame)
+                last_frame_time = time.time()
 
             # afterwards discard remaining frames
             skipped_frames = 0
