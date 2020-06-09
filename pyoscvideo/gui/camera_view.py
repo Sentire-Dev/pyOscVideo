@@ -74,8 +74,15 @@ class CameraView(QWidget):
             self._ui.cameraSelectionComboBox.setCurrentIndex(
                 self._camera_list.index(self._camera) + 1)
 
+        video_manager.is_recording_changed.connect(
+                self._update_recording)
+        self._update_recording(video_manager.is_recording)
+
         self._bind_actions()
         self._start_capturing()
+
+    def _update_recording(self, is_recording: bool):
+        self._ui.cameraSelectionComboBox.setEnabled(not is_recording)
 
     def _bind_actions(self):
         """

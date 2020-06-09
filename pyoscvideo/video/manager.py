@@ -81,6 +81,16 @@ class VideoManager(QObject):
         self._status_msg = value
 
     def use_camera(self, camera: Camera) -> bool:
+        """
+        Registers a camera as in use, starts capturing if it's not capturing
+        yet.
+
+        Can hold multiple instances of the same camera.
+        """
+        if self.is_recording:
+            self._logger.warning("Can't change cameras while recording")
+            return False
+
         if camera.start_capturing():
             camera_count = self._cameras.get(camera, 0)
             self._cameras[camera] = camera_count + 1
@@ -89,6 +99,13 @@ class VideoManager(QObject):
         return False
 
     def unuse_camera(self, camera: Camera):
+        """
+        Stops using a camera, if camera is not used anymore stops capturing."
+        """
+        if self.is_recording:
+            self._logger.warning("Can't change cameras while recording")
+            return False
+
         camera_count = self._cameras.get(camera, 0)
         self._logger.info(f"Unuse camera {camera.name}.")
 
