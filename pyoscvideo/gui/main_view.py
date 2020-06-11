@@ -65,6 +65,10 @@ class MainView(QMainWindow):
         video_manager.is_recording_changed.connect(
                 self._update_recording)
 
+        video_manager.is_capturing_changed.connect(
+                self._update_capturing)
+        self._update_capturing(self._video_manager.is_capturing)
+
         self.setStatusBar(self._ui.statusbar)
 
     def _add_camera_view(self):
@@ -98,6 +102,13 @@ class MainView(QMainWindow):
                         recursive_remove_view(item.layout())
 
         recursive_remove_view(camera_view.layout)
+
+    @pyqtSlot(bool)
+    def _update_capturing(self, is_capturing: bool):
+        """
+        Updates the GUI record button, cant record if isn't capturing.
+        """
+        self._ui.recordButton.setEnabled(is_capturing)
 
     @pyqtSlot(bool)
     def _update_recording(self, is_recording: bool):

@@ -44,8 +44,8 @@ class VideoManager(QObject):
 
     Most methods will pass on the call for each camera in use.
     """
-    # TODO: better name than main controller
     is_recording_changed = pyqtSignal(bool)
+    is_capturing_changed = pyqtSignal(bool)
     status_msg_changed = pyqtSignal(str)
 
     def __init__(self, camera_selector: Type[BaseCameraSelector]):
@@ -58,9 +58,19 @@ class VideoManager(QObject):
 
         self._cameras: Dict[Camera, int] = {}
         self._is_recording = False
+        self._is_capturing = False
         self._status_msg = ''
 
         self.camera_selector = camera_selector
+
+    @property
+    def is_capturing(self):
+        return self._is_capturing
+
+    @is_capturing.setter
+    def is_capturing(self, value: bool):
+        self.is_capturing_changed.emit(value)
+        self._is_capturing = value
 
     @property
     def is_recording(self):
@@ -95,6 +105,8 @@ class VideoManager(QObject):
             camera_count = self._cameras.get(camera, 0)
             self._cameras[camera] = camera_count + 1
             self._logger.info(f"Using camera {camera.name}.")
+            if not self.is_capturing:
+                self.is_capturing = True
             return True
         return False
 
@@ -115,6 +127,8 @@ class VideoManager(QObject):
                 f"Camera {camera.name} is not used anymore, stop capturing.")
             camera.stop_capturing()
             del self._cameras[camera]
+            if not self._cameras:
+                self.is_capturing = False
             return
 
         self._cameras[camera] = camera_count - 1
@@ -139,6 +153,12 @@ class VideoManager(QObject):
         If not capturing yet, starts the capturing, and tries to create a file
         with the set file extension.
         """
+        if not self.is_capturing:
+            if not self._cameras:
+                self._logger.warning("No camera(s) selected.")
+                return False
+            self.start_capturing()
+
         if not self.is_recording:
             for i, camera in enumerate(self._cameras):
                 if not camera.prepare_recording(f"{filename}_camera{i}.avi"):
