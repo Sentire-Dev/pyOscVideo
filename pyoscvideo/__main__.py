@@ -21,8 +21,9 @@
 
 import sys
 import signal
+import logging
 
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
 # Initialize logging module
 from pyoscvideo.helpers.helpers import setup_logging
@@ -41,36 +42,68 @@ class App(QApplication):
         # Setup logging mechanism
         setup_logging()
 
-        # TODO: this should be a command line option also
-        settings = load_settings("settings/pyoscvideo.yml")
+        self._logger = logging.getLogger(__name__+".App")
 
-        # Only loads main modules after settings have been successfuly loaded
+        # TODO: this should be a command line option also
+        self.settings = load_settings("settings/pyoscvideo.yml")
+
+        self.video_manager = None
+        self.osc_interface = None
+        self.main_view = None
+
+    def setup(self):
+        """
+        Setup the app.
+        """
+        # Only load main modules after settings have been successfuly loaded
         from pyoscvideo.video.camera_selector import CameraSelector
         from pyoscvideo.video.manager import VideoManager
         from pyoscvideo.gui.main_view import MainView
         from pyoscvideo.osc.interface import OSCInterface
 
-        camera_selector = CameraSelector(settings.get('camera', {}))
+        camera_selector = CameraSelector(self.settings.get('camera', {}))
         self.video_manager = VideoManager(camera_selector)
-        self.osc_interface = OSCInterface(
-                self.video_manager, **settings['osc'])
-        self.osc_interface.start()
 
-        if settings.get('gui', None) is not None:
+        self.osc_interface = OSCInterface(
+                self.video_manager, **self.settings['osc'])
+
+        gui = self.settings.get('gui', None)
+
+        if not self.osc_interface.listen():
+            # Exit if can't start OSC interface
+            self._logger.error("Can't start OSC interface, quitting.")
+            if gui:
+                error_message = QMessageBox()
+                error_message.setIcon(QMessageBox.Critical)
+                error_message.setText("Can't start OSC interface")
+                error_message.setInformativeText(
+                        "Could not start OSC interface, check the port is "
+                        "available or if pyoscrouter is already running.")
+                error_message.setWindowTitle("pyOscVideo")
+                error_message.exec_()
+            return False
+        else:
+            # Start OSC thread
+            self.osc_interface.start()
+
+        if gui is not None:
             # Should load gui
-            self.main_view = MainView(self.video_manager, **settings['gui'])
+            self.main_view = MainView(self.video_manager,
+                                      **gui)
             self.main_view.show()
         else:
             # no gui, main loop is handled by the OSCInterface thread
             # so we need to listen to ctrl+c to stop the OSC thread
             signal.signal(signal.SIGINT, signal.SIG_DFL)
             self.osc_interface.wait()
+        return True
 
 
 def main():
     """Start the application."""
     app = App(sys.argv)
-    app.exit(app.exec_())
+    if app.setup():
+        app.exit(app.exec_())
 
 
 if __name__ == '__main__':

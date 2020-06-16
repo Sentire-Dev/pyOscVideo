@@ -30,9 +30,12 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from pyoscvideo.video.camera import Camera
 
 if platform.system() == "Linux":
-    import pyudev
+    from pyudev import Context, Device, Monitor, MonitorObserver
     import pyoscvideo.helpers.v4l2 as v4l2
     import fcntl
+else:
+    # To keep type hint happy on other OSs
+    Device = Monitor = MonitorObserver = Context = None
 
 
 class BaseCameraSelector(QObject):
@@ -112,7 +115,7 @@ class LinuxCameraSelector(BaseCameraSelector):
     """
     def __init__(self, *args, **kwargs):
         # Sets up udev context so we can find cameras
-        self._udev_ctx = pyudev.Context()
+        self._udev_ctx = Context()
         self._udev_observer = None
 
         super().__init__(*args, **kwargs)
@@ -121,14 +124,14 @@ class LinuxCameraSelector(BaseCameraSelector):
         self._setup_udev_observer()
 
     def _setup_udev_observer(self):
-        monitor = pyudev.Monitor.from_netlink(self._udev_ctx)
+        monitor = Monitor.from_netlink(self._udev_ctx)
         monitor.filter_by("video4linux")
-        self._udev_observer = pyudev.MonitorObserver(
+        self._udev_observer = MonitorObserver(
                 monitor, self._udev_observer_callback)
         self._udev_observer.start()
         self._logger.info(f"udev monitor started")
 
-    def _udev_observer_callback(self, action: str, device: pyudev.Device):
+    def _udev_observer_callback(self, action: str, device: Device):
         self._logger.info(f"New udev action: {action} - {device}")
         if action == "add":
             if self._check_capture_capability(device):
@@ -137,7 +140,7 @@ class LinuxCameraSelector(BaseCameraSelector):
             if int(device.sys_number) in self.cameras.keys():
                 self._remove_camera(device)
 
-    def _check_capture_capability(self, device: pyudev.Device) -> bool:
+    def _check_capture_capability(self, device: Device) -> bool:
         """
         Check if {device} is capable of capturing.
         """
@@ -148,13 +151,13 @@ class LinuxCameraSelector(BaseCameraSelector):
             fcntl.ioctl(fd, v4l2.VIDIOC_QUERYCAP, cp)  # type: ignore
         return cp.device_caps & v4l2.V4L2_CAP_VIDEO_CAPTURE
 
-    def _add_camera(self, device: pyudev.Device):
+    def _add_camera(self, device: Device):
         self._logger.info(f"Device added: {device}")
         self.add_camera(
                 int(device.sys_number),
                 device.attributes.get("name").decode(sys.stdout.encoding))
 
-    def _remove_camera(self, device: pyudev.Device):
+    def _remove_camera(self, device: Device):
         self._logger.info(f"Device removed: {device}")
         self.remove_camera(int(device.sys_number))
 

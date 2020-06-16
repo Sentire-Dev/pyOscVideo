@@ -20,7 +20,7 @@
 
 from typing import Any, Sequence, Type
 
-from pythonosc.osc_server import AsyncIOOSCUDPServer
+from pythonosc.osc_server import ThreadingOSCUDPServer
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.udp_client import SimpleUDPClient
 
@@ -53,7 +53,7 @@ class OSCInterface(QThread):
         self._remote_address = remote_address
         self._remote_port = remote_port
 
-        self.server: AsyncIOOSCUDPServer = None
+        self.server: ThreadingOSCUDPServer = None
         self.client: SimpleUDPClient = None
 
     def _send_message(self, path: str, args: Sequence[Any]):
@@ -61,11 +61,13 @@ class OSCInterface(QThread):
                 f"Sending message '{path}' with args '{args}' to client")
         self.client.send_message(path, args)
 
-    def _prepare_recording(self, addr: str, filename: str):
+    def _prepare_recording(self, addr: str, filename: str = ""):
         self._logger.info(
                 f"Prepare recording with filename: {filename}")
-        if not filename:
+        if filename == "":
             self._logger.warning("No filename argument")
+            self._send_message("/oscVideo/status",
+                               (False, "No filename provided"))
         elif self._video_manager.prepare_recording(filename):
             self._send_message("/oscVideo/status",
                                (True, "Prepared Recording"))
@@ -89,24 +91,26 @@ class OSCInterface(QThread):
             self._send_message("/oscVideo/status",
                                (True, "Stopped Recording"))
 
-    def run(self):
-        self._logger.info("Running OSC thread")
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
+    def listen(self):
+        """
+        Initialize the server, start listening.
+        """
         dispatcher = Dispatcher()
-        self.server = AsyncIOOSCUDPServer((self._address, self._port),
-                                          dispatcher, loop)
+        try:
+            self.server = ThreadingOSCUDPServer((self._address, self._port),
+                                                dispatcher)
+        except OSError as e:
+            self._logger.error(f"Can't start OSC interface: {e}")
+            return False
+
+        self._logger.info(
+                f"OSC Server listening on {self._address}:{self._port}")
         self.client = SimpleUDPClient(self._remote_address, self._remote_port)
 
         dispatcher.map("/oscVideo/prepareRecording",
                        self._prepare_recording)
         dispatcher.map("/oscVideo/record", self._record)
+        return True
 
-        self.server.serve()
-        self._logger.info(
-                f"OSC Server listening on {self._address}:{self._port}")
-        loop.run_forever()
-
-        self._logger.info(f"OSC Server finished")
+    def run(self):
+        self.server.serve_forever()
