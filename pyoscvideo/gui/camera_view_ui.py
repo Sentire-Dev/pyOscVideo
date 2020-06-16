@@ -52,7 +52,7 @@ class Ui_CameraView(object):
         self.verticalLayout_2.addLayout(self.horizontalLayout_4)
         self.imageLabel = QtWidgets.QLabel(CameraView)
         self.imageLabel.setEnabled(True)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
         sizePolicy.setHeightForWidth(self.imageLabel.sizePolicy().hasHeightForWidth())
