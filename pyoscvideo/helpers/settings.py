@@ -63,6 +63,10 @@ def load_settings(path: str):
                     'width': 1920,
                     'height': 1080,
                 },
+                'recording_resolution': {
+                    'width': 1280,
+                    'height': 720,
+                },
             }
         }
 
