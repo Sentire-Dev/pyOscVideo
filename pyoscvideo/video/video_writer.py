@@ -262,8 +262,9 @@ class QueuedWriterThread(QThread):
         frames_written = 0
         while not self.stop or not self._queue.empty():
             try:
-                frame = self._queue.get_nowait()
+                frame = self._queue.get()
             except queue.Empty:
+                self._logger.warning("Frame to write queue was empty")
                 continue
             if self.stop:
                 self._logger.info("Waiting for filesystem writer to finish...")
