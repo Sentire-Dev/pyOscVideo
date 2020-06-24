@@ -45,7 +45,8 @@ class Camera(QObject):
 
     def __init__(self, device_id: int, name: str,
                  resolution: Optional[Dict[str, int]] = None,
-                 codec: str = "MJPG", recording_fps: int = 25):
+                 codec: str = "MJPG", recording_fps: int = 25,
+                 recording_resolution: Optional[Dict[str, int]] = None):
         """
         Init the camera object, prepare the supporting camera reader,
         video writer and fps update threads.
@@ -65,6 +66,13 @@ class Camera(QObject):
                 "CAP_PROP_FRAME_WIDTH": resolution["width"],
                 "CAP_PROP_FRAME_HEIGHT": resolution["height"],
             })
+
+        self._recording_resolution = None
+        if recording_resolution:
+            self._recording_resolution = (
+                    recording_resolution["width"],
+                    recording_resolution["height"]
+                    )
 
         self.device_id = device_id
         self.frame_counter = 0
@@ -91,10 +99,15 @@ class Camera(QObject):
         Initializes the VideoWriter, which is responsible for managing
         the thread for writing frames to a file keeping constant frame rate.
         """
+        if self._recording_resolution:
+            res = self._recording_resolution
+        else:
+            res = self._camera_reader.size
+
         self._writer = VideoWriter(self._write_queue,
                                    self._codec,
                                    self.recording_fps,
-                                   self._camera_reader.size)
+                                   res)
 
     @property
     def fail_msg(self):
@@ -173,7 +186,6 @@ class Camera(QObject):
             if not self.start_capturing():
                 return False
 
-        self._writer.size = self._camera_reader.size
         if not self._writer.prepare_writing(filename):
             return False
         self._camera_reader.add_queue(self._write_queue)

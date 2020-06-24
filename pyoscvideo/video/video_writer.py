@@ -24,6 +24,7 @@ import os
 import queue
 import time
 import numpy as np
+import cv2
 
 from typing import Optional, Tuple, Union
 
@@ -112,7 +113,7 @@ class VideoWriter:
             self._logger.warning("Not ready for writing")
             return False
 
-        self._write_thread = WriteThread(self._queue, self._writer, self._fps)
+        self._write_thread = WriteThread(self._queue, self._writer, self._fps, self._size)
         self._write_thread.start()
         self._writing = True
         return True
@@ -155,7 +156,8 @@ class WriteThread(QThread):
     recording_time: int
 
     def __init__(self, frame_queue: queue.LifoQueue,
-                 cv_video_writer: cvVideoWriter, fps: int):
+                 cv_video_writer: cvVideoWriter, fps: int,
+                 size: Tuple[int, int]):
         """Init the WriteThread Object."""
         super().__init__()
         self._queue = frame_queue
@@ -164,6 +166,7 @@ class WriteThread(QThread):
                 self._towrite_queue, cv_video_writer)
 
         self._stop = False
+        self._size = size
         self._frame_duration = 1. / fps
         self._logger = logging.getLogger(__name__ + ".WriteThread")
 
@@ -175,7 +178,8 @@ class WriteThread(QThread):
         self._stop = True
 
     def _write_frame(self, frame: np.array):
-        self._towrite_queue.put(frame)
+        frame_resized = cv2.resize(frame, self._size)
+        self._towrite_queue.put(frame_resized)
         self._last_written_frame = frame
         self.frames_written += 1
 
@@ -261,10 +265,7 @@ class QueuedWriterThread(QThread):
         self._logger.info("Starting filesystem writer")
         frames_written = 0
         while not self.stop or not self._queue.empty():
-            try:
-                frame = self._queue.get_nowait()
-            except queue.Empty:
-                continue
+            frame = self._queue.get()
             if self.stop:
                 self._logger.info("Waiting for filesystem writer to finish...")
             self._cv_video_writer.write(frame)
