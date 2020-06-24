@@ -80,6 +80,17 @@ class MainView(QMainWindow):
         camera_view.show()
         num_layouts = self._ui.camerasLayout.count()
         self._ui.camerasLayout.addWidget(camera_view)
+        self._update_camera_layout()
+
+    def _update_camera_layout(self):
+        """
+        Updates the camera grid layout in order to ensure equal sizes for the camera views
+        """
+        for i in range(self._ui.camerasLayout.columnCount()):
+            self._ui.camerasLayout.setColumnStretch(i, 1)
+
+        for j in range(self._ui.camerasLayout.rowCount()):
+            self._ui.camerasLayout.setRowStretch(j, 1)
 
     def _remove_camera_view(self, camera_view):
         """

@@ -63,7 +63,7 @@
     },
   
     "loggers": {
-      "pyoscvideo.controllers.video_writer": {
+      "pyoscvideo.controllers.video_writer.VideoWriter": {
         "level": "DEBUG",
         "handlers": ["console", "info_file_handler", "debug_file_handler"],
         "propagate": false
