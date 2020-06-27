@@ -22,6 +22,7 @@
 import sys
 import signal
 import logging
+import argparse
 
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -33,11 +34,11 @@ from pyoscvideo.helpers.settings import load_settings
 class App(QApplication):
     """The application class for initializing the app."""
 
-    def __init__(self, sys_argv):
+    def __init__(self, settings_file, qt_argv):
         """
         Init the QApplication.
         """
-        super(App, self).__init__(sys_argv)
+        super(App, self).__init__(qt_argv)
 
         # Setup logging mechanism
         setup_logging()
@@ -45,11 +46,11 @@ class App(QApplication):
         self._logger = logging.getLogger(__name__+".App")
 
         # TODO: this should be a command line option also
-        self.settings = load_settings("settings/pyoscvideo.yml")
+        self.settings = load_settings(settings_file)
 
         self.video_manager = None
         self.osc_interface = None
-        self.main_view = None
+        self.main_view = None       
 
     def setup(self):
         """
@@ -101,7 +102,11 @@ class App(QApplication):
 
 def main():
     """Start the application."""
-    app = App(sys.argv)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--settings', default="settings/pyoscvideo.yml",
+                        help="Path to settings file")
+    parsed_args, unparsed_args = parser.parse_known_args()
+    app = App(parsed_args.settings, unparsed_args)
     if app.setup():
         app.exit(app.exec_())
 

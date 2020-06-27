@@ -75,6 +75,8 @@ def load_settings(path: str):
             loaded_settings = yaml.safe_load(settings_file)
             _remove_unused_configuration(loaded_settings, settings)
             settings.update(loaded_settings)
+    else:
+        _logger.warning(f"Can't find settings file: '{path}'")
 
     # remove GUI configuration if it is not enabled
     if not settings.get('gui', {}).pop('enabled', True):
