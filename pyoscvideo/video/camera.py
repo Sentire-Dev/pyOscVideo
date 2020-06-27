@@ -22,7 +22,7 @@ import queue
 import time
 import numpy as np
 
-from typing import Callable, Optional, Dict
+from typing import Callable, Optional, Dict, Any, Tuple
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
@@ -42,6 +42,7 @@ class Camera(QObject):
     is_recording: bool
     name: str
     recording_fps: int
+    recording_info: Optional[Dict['str', Any]]
 
     def __init__(self, device_id: int, name: str,
                  resolution: Optional[Dict[str, int]] = None,
@@ -67,12 +68,18 @@ class Camera(QObject):
                 "CAP_PROP_FRAME_HEIGHT": resolution["height"],
             })
 
-        self._recording_resolution = None
+        self._recording_resolution: Optional[Tuple[int, int]] = None
         if recording_resolution:
             self._recording_resolution = (
                     recording_resolution["width"],
                     recording_resolution["height"]
                     )
+        else:
+            if resolution:
+                self._recording_resolution = (
+                        resolution["width"],
+                        resolution["height"]
+                        )
 
         self.device_id = device_id
         self.frame_counter = 0
@@ -82,6 +89,7 @@ class Camera(QObject):
         self.is_capturing = False
         self.is_recording = False
         self.recording_fps = recording_fps
+        self.recording_info = {}
 
         self._image_update_thread = None
         self._init_reader_and_writer()
@@ -99,15 +107,13 @@ class Camera(QObject):
         Initializes the VideoWriter, which is responsible for managing
         the thread for writing frames to a file keeping constant frame rate.
         """
-        if self._recording_resolution:
-            res = self._recording_resolution
-        else:
-            res = self._camera_reader.size
+        if self._recording_resolution is None:
+            self._recording_resolution = self._camera_reader.frame_size
 
         self._writer = VideoWriter(self._write_queue,
                                    self._codec,
                                    self.recording_fps,
-                                   res)
+                                   self._recording_resolution)
 
     @property
     def fail_msg(self):
@@ -188,6 +194,7 @@ class Camera(QObject):
 
         if not self._writer.prepare_writing(filename):
             return False
+
         self._camera_reader.add_queue(self._write_queue)
 
         return True
@@ -253,6 +260,7 @@ class Camera(QObject):
         """Start the recording.
         """
         if self._camera_reader.ready and self._writer.ready:
+            self.recording_info = {}
             self._writer.start_writing()
             self.is_recording = True
             self._logger.info("Started recording")
@@ -279,6 +287,10 @@ class Camera(QObject):
             if recording_time > 0:
                 avg = frames_written / recording_time
                 self._logger.info(f"Average frame rate: {avg:.2f}")
+            self.recording_info["time"] = recording_time
+            self.recording_info["fps"] = avg
+            self.recording_info["resolution"] = self._recording_resolution
+            self.recording_info["frames"] = frames_written
             # Re-init the writer
             # TODO: review this because it doesn't seem correct to re-init
             # it here
