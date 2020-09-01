@@ -1,7 +1,3 @@
-"""Entry point of the osc_video application.
-
-TODO: add file description
-"""
 
 
 # *****************************************************************************
@@ -24,34 +20,93 @@ TODO: add file description
 # *****************************************************************************
 
 import sys
+import signal
+import logging
+import argparse
 
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from pyoscvideo.controllers.main_ctrl import MainController
-from pyoscvideo.model.model import Recorder
-from pyoscvideo.views.main_view import MainView
-from pyoscvideo.views.osc_interface import OSCInterface
+# Initialize logging module
+from pyoscvideo.helpers.helpers import setup_logging
+from pyoscvideo.helpers.settings import load_settings
 
 
 class App(QApplication):
     """The application class for initializing the app."""
 
-    def __init__(self, sys_argv):
-        """Init the QApplication."""
-        super(App, self).__init__(sys_argv)
-        self.model = Recorder()
-        self.main_controller = MainController(self.model)
-        self.main_view = MainView(self.main_controller)
-        self.osc_interface = OSCInterface(self.main_controller)
-        self.osc_interface.start()
+    def __init__(self, settings_file, qt_argv):
+        """
+        Init the QApplication.
+        """
+        super(App, self).__init__(qt_argv)
 
-        self.main_view.show()
+        # Setup logging mechanism
+        setup_logging()
+
+        self._logger = logging.getLogger(__name__+".App")
+
+        # TODO: this should be a command line option also
+        self.settings = load_settings(settings_file)
+
+        self.video_manager = None
+        self.osc_interface = None
+        self.main_view = None
+
+    def setup(self):
+        """
+        Setup the app.
+        """
+        # Only load main modules after settings have been successfuly loaded
+        from pyoscvideo.video.manager import VideoManager
+        from pyoscvideo.gui.main_view import MainView
+        from pyoscvideo.osc.interface import OSCInterface
+
+        self.video_manager = VideoManager(self.settings.get('camera', {}))
+
+        self.osc_interface = OSCInterface(
+                self.video_manager, **self.settings['osc'])
+
+        gui = self.settings.get('gui', None)
+
+        if not self.osc_interface.listen():
+            # Exit if can't start OSC interface
+            self._logger.error("Can't start OSC interface, quitting.")
+            if gui:
+                error_message = QMessageBox()
+                error_message.setIcon(QMessageBox.Critical)
+                error_message.setText("Can't start OSC interface")
+                error_message.setInformativeText(
+                        "Could not start OSC interface, check the port is "
+                        "available or if pyoscrouter is already running.")
+                error_message.setWindowTitle("pyOscVideo")
+                error_message.exec_()
+            return False
+        else:
+            # Start OSC thread
+            self.osc_interface.start()
+
+        if gui is not None:
+            # Should load gui
+            self.main_view = MainView(self.video_manager,
+                                      **gui)
+            self.main_view.show()
+        else:
+            # no gui, main loop is handled by the OSCInterface thread
+            # so we need to listen to ctrl+c to stop the OSC thread
+            signal.signal(signal.SIGINT, signal.SIG_DFL)
+            self.osc_interface.wait()
+        return True
 
 
 def main():
     """Start the application."""
-    app = App(sys.argv)
-    app.exit(app.exec_())
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--settings', default="settings/pyoscvideo.yml",
+                        help="Path to settings file")
+    parsed_args, unparsed_args = parser.parse_known_args()
+    app = App(parsed_args.settings, unparsed_args)
+    if app.setup():
+        app.exit(app.exec_())
 
 
 if __name__ == '__main__':

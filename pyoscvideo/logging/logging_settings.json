@@ -7,11 +7,11 @@
       },
 
       "console": {
-        "format": "%(name)-12s: [%(levelname)-8s] %(message)s"
+        "format": "%(asctime)s - %(name)-12s: [%(levelname)-8s] %(message)s"
       },
 
       "console_thread": {
-        "format": "%(name)-12s: [%(levelname)-8s] [%(threadName)-9s] %(message)s"
+        "format": "%(asctime)s -  %(name)-12s: [%(levelname)-8s] [%(threadName)-9s] %(message)s"
       }
 
     },
@@ -63,7 +63,7 @@
     },
   
     "loggers": {
-      "pyoscvideo.controllers.video_writer": {
+      "pyoscvideo.controllers.video_writer.VideoWriter": {
         "level": "DEBUG",
         "handlers": ["console", "info_file_handler", "debug_file_handler"],
         "propagate": false
@@ -75,7 +75,7 @@
         "propagate": false
       },
 
-      "pyoscvideo.views.main_view.MainView": {
+      "pyoscvideo.gui.main_view.MainView": {
         "level": "INFO",
         "handlers": ["console_thread", "info_file_handler", "debug_file_handler"],
         "propagate": false
