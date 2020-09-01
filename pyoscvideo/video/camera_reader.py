@@ -24,7 +24,7 @@ import queue
 import numpy as np
 import cv2
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 from PyQt5.QtCore import QThread
 from cv2.cv2 import (
@@ -44,7 +44,6 @@ class CameraReader:
     The OpenCV caputre can be configured using the `options` argument, see
     set_camera_options().
     """
-
     stream: Optional[VideoCapture]
     fail_msg: str
 
@@ -61,6 +60,7 @@ class CameraReader:
         self._ready = False
         self.stream = None
         self.fail_msg = ""
+        self.frame_size: Optional[Tuple[int, int]] = None
 
     @property
     def ready(self) -> bool:
@@ -104,9 +104,9 @@ class CameraReader:
         raise NotImplementedError
 
     @property
-    def size(self) -> List[int]:
+    def size(self) -> Tuple[int, int]:
         """Get the size."""
-        return [self.width, self.height]
+        return (self.width, self.height)
 
     @size.setter
     def size(self, value):
@@ -155,9 +155,19 @@ class CameraReader:
         # check size
         success, frame = self.stream.read()
         if success:
+            self.frame_size = (frame.shape[1], frame.shape[0])
+            config_size = (
+                    self._options.get("CAP_PROP_FRAME_WIDTH", self.size[0]),
+                    self._options.get("CAP_PROP_FRAME_HEIGHT", self.size[1]))
+
             self._logger.info("Camera Stream Ready")
-            self._logger.info("Capture Size %s", self.size)
-            self._logger.info("Camera Fps: %s", self.frame_rate)
+            if self.frame_size != config_size:
+                self._logger.warning(
+                        f"Capture size is different from the configured one: "
+                        f"{config_size} != {self.frame_size}")
+            else:
+                self._logger.info(f"Capture Size: {self.frame_size}")
+            self._logger.info(f"Camera Fps: {self.frame_rate}")
             self.start_buffering()
             return True
 

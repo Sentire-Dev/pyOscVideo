@@ -85,7 +85,7 @@ class MainView(QMainWindow):
     def _update_camera_layout(self):
         """
         Updates the camera grid layout in order to ensure equal sizes for the
-        camera views
+        camera views.
         """
         for i in range(self._ui.camerasLayout.columnCount()):
             self._ui.camerasLayout.setColumnStretch(i, 1)

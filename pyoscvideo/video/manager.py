@@ -48,7 +48,7 @@ class VideoManager(QObject):
     is_capturing_changed = pyqtSignal(bool)
     status_msg_changed = pyqtSignal(str)
 
-    def __init__(self, camera_selector: Type[BaseCameraSelector]):
+    def __init__(self, camera_options: Dict[str, Any]):
         """
         Init the main controller.
         """
@@ -62,7 +62,7 @@ class VideoManager(QObject):
         self._status_msg = ''
         self._recording_dir = None
 
-        self.camera_selector = camera_selector
+        self.camera_selector = CameraSelector(camera_options)
 
     @property
     def is_capturing(self):
@@ -90,6 +90,7 @@ class VideoManager(QObject):
     def status_msg(self, value: str):
         self.status_msg_changed.emit(value)
         self._status_msg = value
+        self._logger.info(f"Status changed: {value}")
 
     def use_camera(self, camera: Camera) -> bool:
         """
@@ -106,9 +107,16 @@ class VideoManager(QObject):
             camera_count = self._cameras.get(camera, 0)
             self._cameras[camera] = camera_count + 1
             self._logger.info(f"Using camera {camera.name}.")
+            success, resolution = camera.check_frame_size()
+            if not success:
+                self.status_msg = (
+                    f"{camera.name} is capturing in the wrong "
+                    f"resolution: {resolution}")
+
             if not self.is_capturing:
                 self.is_capturing = True
             return True
+
         return False
 
     def unuse_camera(self, camera: Camera):

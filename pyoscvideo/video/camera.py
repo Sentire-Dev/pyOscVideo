@@ -6,7 +6,7 @@
 #  pyOscVideo is free software: you can redistribute it and/or modify         *
 #  it under the terms of the GNU General Public License as published by       *
 #  the Free Software Foundation, either version 3 of the License, or          *
-#  (at your option) any later version.                                        *
+#  (at your option) later version.                                        *
 #                                                                             *
 #  pyOscVideo is distributed in the hope that it will be useful,              *
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of             *
@@ -62,7 +62,9 @@ class Camera(QObject):
             "CAP_PROP_FOURCC": fourcc,
             }
 
+        self._resolution = None
         if resolution:
+            self._resolution = (resolution["width"], resolution["height"])
             self._options.update({
                 "CAP_PROP_FRAME_WIDTH": resolution["width"],
                 "CAP_PROP_FRAME_HEIGHT": resolution["height"],
@@ -114,6 +116,18 @@ class Camera(QObject):
                                    self._codec,
                                    self.recording_fps,
                                    self._recording_resolution)
+
+    def check_frame_size(self) -> Tuple[bool, Tuple[int, int]]:
+        """
+        Checks if the captured frame size is the same as the configured one.
+
+        Raises ValueError if called before starting to capture.
+        """
+        if not self.is_capturing:
+            raise ValueError(
+                    "Can't check frame size before starting to capture")
+        return (self._camera_reader.frame_size == self._resolution,
+                self._camera_reader.frame_size)
 
     @property
     def fail_msg(self):
