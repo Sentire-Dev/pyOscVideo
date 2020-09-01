@@ -22,7 +22,7 @@
 import logging
 import queue
 import time
-import numpy as np
+import os
 
 from typing import Dict, Any, Type
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -60,6 +60,7 @@ class VideoManager(QObject):
         self._is_recording = False
         self._is_capturing = False
         self._status_msg = ''
+        self._recording_dir = None
 
         self.camera_selector = CameraSelector(camera_options)
 
@@ -168,8 +169,11 @@ class VideoManager(QObject):
             self.start_capturing()
 
         if not self.is_recording:
+            self._recording_dir = filename
+            if not os.path.exists(filename):
+                os.makedirs(filename)
             for i, camera in enumerate(self._cameras):
-                if not camera.prepare_recording(f"{filename}_camera{i}.avi"):
+                if not camera.prepare_recording(f"{filename}/camera_{i}.avi"):
                     return False
         else:
             self._logger.warning("Already recording")
@@ -214,7 +218,7 @@ class VideoManager(QObject):
             self.new_recording(filename)
 
     def start_recording(self) -> bool:
-        """Stop the recording and print out statistics.
+        """Starts recording.
 
         TODO: add return values
         """
@@ -231,7 +235,22 @@ class VideoManager(QObject):
         """
         for camera in self._cameras:
             camera.stop_recording()
+        self._write_recording_statistics()
         self.is_recording = False
+
+    def _write_recording_statistics(self):
+        path = os.path.join(self._recording_dir, "statistics.txt")
+        with open(path, "w") as stats_file:
+            for camera in self._cameras:
+                camera_stats = camera.recording_info
+                stats_file.writelines([
+                    f"Camera: {camera.name}\n",
+                    f"\tAverage FPS: {camera_stats['fps']:.2f}\n",
+                    f"\tResolution: {camera_stats['resolution']}\n",
+                    f"\tRecording time: {camera_stats['time']:.1f}s\n",
+                    f"\tTotal frames: {camera_stats['frames']}\n",
+                    f"\tRepeated frames: {camera_stats['frames_repeated']}\n",
+                    "\n"])
 
     def cleanup(self):
         """Perform necessary action to guarantee a clean exit of the app."""
