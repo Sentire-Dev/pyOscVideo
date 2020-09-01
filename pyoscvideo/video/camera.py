@@ -22,7 +22,7 @@ import queue
 import time
 import numpy as np
 
-from typing import Callable, Optional, Dict
+from typing import Callable, Optional, Dict, Tuple
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
@@ -61,7 +61,9 @@ class Camera(QObject):
             "CAP_PROP_FOURCC": fourcc,
             }
 
+        self._resolution = None
         if resolution:
+            self._resolution = (resolution["width"], resolution["height"])
             self._options.update({
                 "CAP_PROP_FRAME_WIDTH": resolution["width"],
                 "CAP_PROP_FRAME_HEIGHT": resolution["height"],
@@ -108,6 +110,18 @@ class Camera(QObject):
                                    self._codec,
                                    self.recording_fps,
                                    res)
+
+    def check_frame_size(self) -> Tuple[bool, Tuple[int, int]]:
+        """
+        Checks if the captured frame size is the same as the configured one.
+
+        Raises ValueError if called before starting to capture.
+        """
+        if not self.is_capturing:
+            raise ValueError(
+                    "Can't check frame size before starting to capture")
+        return (self._camera_reader.frame_size == self._resolution,
+                self._camera_reader.frame_size)
 
     @property
     def fail_msg(self):

@@ -56,13 +56,11 @@ class App(QApplication):
         Setup the app.
         """
         # Only load main modules after settings have been successfuly loaded
-        from pyoscvideo.video.camera_selector import CameraSelector
         from pyoscvideo.video.manager import VideoManager
         from pyoscvideo.gui.main_view import MainView
         from pyoscvideo.osc.interface import OSCInterface
 
-        camera_selector = CameraSelector(self.settings.get('camera', {}))
-        self.video_manager = VideoManager(camera_selector)
+        self.video_manager = VideoManager(self.settings.get('camera', {}))
 
         self.osc_interface = OSCInterface(
                 self.video_manager, **self.settings['osc'])

@@ -113,7 +113,8 @@ class VideoWriter:
             self._logger.warning("Not ready for writing")
             return False
 
-        self._write_thread = WriteThread(self._queue, self._writer, self._fps, self._size)
+        self._write_thread = WriteThread(self._queue, self._writer, self._fps,
+                                         self._size)
         self._write_thread.start()
         self._writing = True
         return True
