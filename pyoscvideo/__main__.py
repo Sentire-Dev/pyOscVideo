@@ -50,7 +50,7 @@ class App(QApplication):
 
         self.video_manager = None
         self.osc_interface = None
-        self.main_view = None       
+        self.main_view = None
 
     def setup(self):
         """
