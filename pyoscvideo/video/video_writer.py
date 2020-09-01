@@ -119,14 +119,14 @@ class VideoWriter:
         self._writing = True
         return True
 
-    def stop_writing(self) -> Tuple[int, float]:
+    def stop_writing(self) -> Tuple[int, float, int]:
         """
         Stop the writing thread returning the number of frames written and
         the total recording time in seconds.
         """
         if not self._writing:
             self._logger.warning("Not writing, nothing to stop")
-            return 0, 0
+            return 0, 0.0, 0
 
         assert self._write_thread is not None
 
@@ -136,7 +136,8 @@ class VideoWriter:
         self._write_thread.quit()
         self._write_thread.wait()
         return (self._write_thread.frames_written,
-                self._write_thread.recording_time)
+                self._write_thread.recording_time,
+                self._write_thread.frames_repeated)
 
     def release(self):
         if self._writing:
@@ -154,6 +155,7 @@ class WriteThread(QThread):
     """
 
     frames_written: int
+    frames_repeated: int
     recording_time: int
 
     def __init__(self, frame_queue: queue.LifoQueue,
@@ -172,6 +174,7 @@ class WriteThread(QThread):
         self._logger = logging.getLogger(__name__ + ".WriteThread")
 
         self.frames_written = 0
+        self.frames_repeated = 0
         self.recording_time = 0
 
     def stop(self):
@@ -191,6 +194,7 @@ class WriteThread(QThread):
         self._logger.info("Started writing")
         first_frame_time = 0
         last_frame_time = 0
+        frames_repeated = 0
 
         while first_frame_time == 0 and not self._stop:
             try:
@@ -215,6 +219,7 @@ class WriteThread(QThread):
                 # this helps when the camera FPS is too slow to keep up with
                 # our recording FPS...
                 self._logger.debug(f'We are too late, repeat frame')
+                frames_repeated += 1
                 self._write_frame(self._last_written_frame)
             else:
                 # get most recent frame and write it to the file stream
@@ -242,6 +247,7 @@ class WriteThread(QThread):
 
         self._logger.info("Finished writing")
         self.recording_time = last_frame_time - first_frame_time
+        self.frames_repeated = frames_repeated
 
 
 class QueuedWriterThread(QThread):

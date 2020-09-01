@@ -241,6 +241,7 @@ class VideoManager(QObject):
                     f"\tResolution: {camera_stats['resolution']}\n",
                     f"\tRecording time: {camera_stats['time']:.1f}s\n",
                     f"\tTotal frames: {camera_stats['frames']}\n",
+                    f"\tRepeated frames: {camera_stats['frames_repeated']}\n",
                     "\n"])
 
     def cleanup(self):

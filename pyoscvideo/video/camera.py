@@ -277,7 +277,9 @@ class Camera(QObject):
         TODO: add return values
         """
         if self.is_recording:
-            frames_written, recording_time = self._writer.stop_writing()
+            frames_written, recording_time, frames_repeated = (
+                    self._writer.stop_writing()
+                )
             self._camera_reader.remove_queue(self._write_queue)
             self.is_recording = False
             self._logger.info("Stopped recording")
@@ -291,6 +293,7 @@ class Camera(QObject):
             self.recording_info["fps"] = avg
             self.recording_info["resolution"] = self._recording_resolution
             self.recording_info["frames"] = frames_written
+            self.recording_info["frames_repeated"] = frames_repeated
             # Re-init the writer
             # TODO: review this because it doesn't seem correct to re-init
             # it here
