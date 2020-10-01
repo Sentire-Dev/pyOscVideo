@@ -393,6 +393,7 @@ class UpdateImage(QThread):
                 frame = self._queue.get(timeout=0.2)
             except queue.Empty:
                 self._logger.warning("Timed out waiting for a frame")
+                continue
             self._logger.debug("emit image")
             image = self.cv2qt(frame)
             self.change_pixmap.emit(image)
