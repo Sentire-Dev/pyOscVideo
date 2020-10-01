@@ -273,7 +273,10 @@ class QueuedWriterThread(QThread):
         self._logger.info("Starting filesystem writer")
         frames_written = 0
         while not self.stop or not self._queue.empty():
-            frame = self._queue.get()
+            try:
+                frame = self._queue.get(True, 0.1)
+            except queue.Empty:
+                break
             if self.stop:
                 self._logger.info("Waiting for filesystem writer to finish...")
             self._cv_video_writer.write(frame)
