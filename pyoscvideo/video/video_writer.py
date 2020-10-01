@@ -286,4 +286,3 @@ class QueuedWriterThread(QThread):
         self._cv_video_writer.release()
         self._logger.info(
             f"Filesystem writer finished, frames written: {frames_written}")
-
