@@ -173,7 +173,7 @@ class VideoManager(QObject):
             if not os.path.exists(filename):
                 os.makedirs(filename)
             for i, camera in enumerate(self._cameras):
-                if not camera.prepare_recording(f"{filename}/camera_{i}.avi"):
+                if not camera.prepare_recording(f"{filename}/camera_{i}.mov"):
                     return False
         else:
             self._logger.warning("Already recording")
