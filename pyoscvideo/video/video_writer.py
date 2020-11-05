@@ -248,6 +248,7 @@ class WriteThread(QThread):
         self._logger.info("Finished writing")
         self.recording_time = last_frame_time - first_frame_time
         self.frames_repeated = frames_repeated
+        self._filesystem_writer_thread.wait()
 
 
 class QueuedWriterThread(QThread):
@@ -272,13 +273,16 @@ class QueuedWriterThread(QThread):
         self._logger.info("Starting filesystem writer")
         frames_written = 0
         while not self.stop or not self._queue.empty():
-            frame = self._queue.get()
+            try:
+                frame = self._queue.get(True, 0.1)
+            except queue.Empty:
+                break
             if self.stop:
                 self._logger.info("Waiting for filesystem writer to finish...")
             self._cv_video_writer.write(frame)
             frames_written += 1
 
-        self._logger.info(
-            f"Filesystem writer finished, frames written: {frames_written}")
         self._logger.info("Releasing cv.VideoWriter")
         self._cv_video_writer.release()
+        self._logger.info(
+            f"Filesystem writer finished, frames written: {frames_written}")
