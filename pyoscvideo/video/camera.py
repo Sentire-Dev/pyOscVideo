@@ -28,7 +28,8 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 from cv2.cv2 import VideoWriter_fourcc
 
-from pyoscvideo.video.camera_reader import CameraReader
+from pyoscvideo.helpers.helpers import cv2qt
+from pyoscvideo.video.source_reader import SourceReader
 from pyoscvideo.video.video_writer import VideoWriter
 
 
@@ -99,10 +100,10 @@ class Camera(QObject):
 
     def _init_reader(self):
         """
-        Initializes the CameraReader, which is responsible for managing
+        Initializes the SourceReader, which is responsible for managing
         a thread for reading frames from the camera.
         """
-        self._camera_reader = CameraReader(self._read_queue, self._options)
+        self._camera_reader = SourceReader(self._read_queue, self._options)
 
     def _init_writer(self):
         """
@@ -148,14 +149,14 @@ class Camera(QObject):
         """
         Start capturing frames from the defined source.
 
-        Creates CameraReader Object and sets the source and the state
+        Creates SourceReader Object and sets the source and the state
         """
         self._logger.info("Start capturing")
 
         if self.is_capturing:
             return True
 
-        if (self._camera_reader.set_camera(self.device_id) and
+        if (self._camera_reader.set_source(self.device_id) and
                 self._camera_reader.ready):
             self._logger.info("Capturing started")
             self._start_image_update_thread()
@@ -185,7 +186,7 @@ class Camera(QObject):
         """
         Initializes both camera reader and video writer.
         """
-        self._camera_reader: Optional[CameraReader] = None
+        self._camera_reader: Optional[SourceReader] = None
         self._read_queue: queue.LifoQueue = queue.LifoQueue()
         self._init_reader()
 
@@ -395,7 +396,7 @@ class UpdateImage(QThread):
                 self._logger.warning("Timed out waiting for a frame")
                 continue
             self._logger.debug("emit image")
-            image = self.cv2qt(frame)
+            image = cv2qt(frame)
             self.change_pixmap.emit(image)
             self.new_frame.emit()
             while not self._queue.empty():
@@ -404,25 +405,3 @@ class UpdateImage(QThread):
                     self._queue.get_nowait()
                 except queue.Empty:
                     continue
-
-    @staticmethod
-    def cv2qt(frame):
-        """Convert an image frame from cv to qt format.
-
-        Arguments:
-            frame {[type]} -- [description]
-
-        Returns:
-            [type] -- [description]
-        """
-        qt_format = QImage.Format_Indexed8
-        if len(frame.shape) == 3:
-            if frame.shape[2] == 4:
-                qt_format = QImage.Format_RGBA8888
-            else:
-                qt_format = QImage.Format_RGB888
-
-        cv_image = QImage(frame, frame.shape[1], frame.shape[0],
-                          frame.strides[0], qt_format)
-        cv_image = cv_image.rgbSwapped()
-        return cv_image

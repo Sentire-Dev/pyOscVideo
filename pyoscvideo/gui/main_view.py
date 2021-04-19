@@ -35,6 +35,7 @@ from pyoscvideo.video.manager import VideoManager
 from pyoscvideo.video.camera import Camera
 from pyoscvideo.gui.main_view_ui import Ui_MainWindow
 from pyoscvideo.gui.camera_view import CameraView
+from pyoscvideo.gui.video_view import VideoView
 
 
 class MainView(QMainWindow):
@@ -53,6 +54,7 @@ class MainView(QMainWindow):
         self.should_quit.connect(video_manager.cleanup)
 
         self._camera_views: List[CameraView] = []
+        self._video_windows = []
         self._video_manager = video_manager
 
         # for now shows / uses all cameras available
@@ -67,6 +69,10 @@ class MainView(QMainWindow):
 
         video_manager.is_capturing_changed.connect(
                 self._update_capturing)
+
+        video_manager.new_file_loaded.connect(
+                self._load_new_file)
+
         self._update_capturing(self._video_manager.is_capturing)
 
         self.setStatusBar(self._ui.statusbar)
@@ -114,6 +120,12 @@ class MainView(QMainWindow):
                         recursive_remove_view(item.layout())
 
         recursive_remove_view(camera_view.layout)
+
+    @pyqtSlot(int)
+    def _load_new_file(self, index):
+        window = VideoView(self._video_manager.loaded_videos[index])
+        self._video_windows.append(window)
+        window.show()
 
     @pyqtSlot(bool)
     def _update_capturing(self, is_capturing: bool):
@@ -173,4 +185,8 @@ class MainView(QMainWindow):
         """
         for camera_view in self._camera_views:
             camera_view.cleanup()
+
+        for video_window in self._video_windows:
+            video_window.close()
+
         self.should_quit.emit()

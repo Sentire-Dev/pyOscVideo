@@ -28,6 +28,7 @@ from typing import Dict, Any, Type
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from pyoscvideo.video.camera import Camera
+from pyoscvideo.video.player import VideoFile
 from pyoscvideo.video.camera_selector import CameraSelector, BaseCameraSelector
 
 
@@ -47,6 +48,7 @@ class VideoManager(QObject):
     is_recording_changed = pyqtSignal(bool)
     is_capturing_changed = pyqtSignal(bool)
     status_msg_changed = pyqtSignal(str)
+    new_file_loaded = pyqtSignal(int)
 
     def __init__(self, camera_options: Dict[str, Any]):
         """
@@ -57,10 +59,12 @@ class VideoManager(QObject):
         self._logger.info("Initializing")
 
         self._cameras: Dict[Camera, int] = {}
+        self.loaded_videos = []
         self._is_recording = False
         self._is_capturing = False
         self._status_msg = ''
         self._recording_dir = None
+        self._video_playing = False
 
         self.camera_selector = CameraSelector(camera_options)
 
@@ -91,6 +95,26 @@ class VideoManager(QObject):
         self.status_msg_changed.emit(value)
         self._status_msg = value
         self._logger.info(f"Status changed: {value}")
+
+    def load_file(self, filename: str) -> bool:
+        video_file = VideoFile(filename, queue.Queue(), self._video_playing)
+        self.loaded_videos.append(video_file)
+        self.new_file_loaded.emit(len(self.loaded_videos) - 1)
+        return True
+
+    def set_video_position(self, msecs):
+        for video in self.loaded_videos:
+            video.set_position(msecs)
+
+    def set_video_play(self):
+        self._video_playing = True
+        for video in self.loaded_videos:
+            video.set_playing(True)
+
+    def set_video_pause(self):
+        self._video_playing = False
+        for video in self.loaded_videos:
+            video.set_playing(False)
 
     def use_camera(self, camera: Camera) -> bool:
         """

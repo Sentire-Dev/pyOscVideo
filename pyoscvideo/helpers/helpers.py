@@ -20,6 +20,8 @@
 # pylint: disable=trailing-whitespace
 
 
+from PyQt5.QtGui import QImage
+
 import json
 import logging.config
 import os
@@ -67,3 +69,25 @@ def get_cv_cap_property_id(cv_property):
         print('{} is not a valid OpenCV property!'.format(cv_property))
         return None
     return integer_value
+
+
+def cv2qt(frame):
+    """Convert an image frame from cv to qt format.
+
+    Arguments:
+        frame {[type]} -- [description]
+
+    Returns:
+        [type] -- [description]
+    """
+    qt_format = QImage.Format_Indexed8
+    if len(frame.shape) == 3:
+        if frame.shape[2] == 4:
+            qt_format = QImage.Format_RGBA8888
+        else:
+            qt_format = QImage.Format_RGB888
+
+    cv_image = QImage(frame, frame.shape[1], frame.shape[0],
+                      frame.strides[0], qt_format)
+    cv_image = cv_image.rgbSwapped()
+    return cv_image

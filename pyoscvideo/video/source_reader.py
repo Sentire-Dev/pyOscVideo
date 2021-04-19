@@ -21,6 +21,7 @@
 
 import logging
 import queue
+import time
 import numpy as np
 import cv2
 
@@ -36,10 +37,10 @@ from cv2.cv2 import (
 from pyoscvideo.helpers.helpers import get_cv_cap_property_id
 
 
-class CameraReader:
+class SourceReader:
     """
-    Buffered reading from a Camera using VideoCapture and pushing frames
-    to queue(s) to be consumed.
+    Buffered reading from a Camera or Video File using VideoCapture and
+    pushing frames to queue(s) to be consumed.
 
     The OpenCV caputre can be configured using the `options` argument, see
     set_camera_options().
@@ -48,11 +49,12 @@ class CameraReader:
     fail_msg: str
 
     def __init__(self, frame_queue: queue.LifoQueue, options: Dict[str, Any]):
-        """Init the CameraReader."""
-        self._logger = logging.getLogger(__name__ + ".CameraReader")
+        """Init the SourceReader."""
+        self._logger = logging.getLogger(__name__ + ".SourceReader")
         self._logger.info("Initializing")
         self._options = options
         self._queues = [frame_queue]
+        self._control_queue = None
         self._num_clients = 0
         self._read_thread = None
         self._reading_finished = True
@@ -125,17 +127,22 @@ class CameraReader:
         self._logger.warning("Camera is not ready")
         return 0.0
 
-    def set_camera(self, device_id: int) -> bool:
+    def set_source(self, source, control_queue=None) -> bool:
         """
-        Set the camera to the given ID.
+        Can be a video file or a camera id
         """
-        self._logger.info("Set camera device: %s", device_id)
+        self._logger.info("Set source: %s", source)
         if self._buffering:
             self.stop_buffering()
         if self.ready:
             self.release()
-        if self.open_camera(device_id):
-            return True
+
+        if isinstance(source, int):
+            if self.open_camera(source):
+                return True
+        elif isinstance(source, str):
+            if self.open_video_file(source, control_queue):
+                return True
         return False
 
     def open_camera(self, device_id: int) -> bool:
@@ -173,6 +180,35 @@ class CameraReader:
 
         self._logger.warning("Camera not ready, can't open.")
         return False
+
+    def open_video_file(self, filename, control_queue) -> bool:
+        """
+        Open the camera with the given ID.
+        """
+        self.fail_msg = ""
+        try:
+            self.stream = VideoCapture(filename)
+        except RuntimeError as err:
+            print(f"Could not open video with name {file_name}: {err}")
+            self.fail_msg = str(err)
+            return False
+
+        success, frame = self.stream.read()
+        if success:
+            self._logger.info(f"Video Fps: {self.frame_rate}")
+            if control_queue is None:
+                self._logger.warning(f"Playing a video without a controller")
+            self.start_video_buffering(control_queue)
+            return True
+
+        self._logger.warning("Can't read video file.")
+        return False
+
+    def set_video_playing(self, is_playing):
+        if self._read_thread is not None:
+            self._logger.info(
+                    "setting read thread to play: {}".format(is_playing))
+            self._read_thread.is_playing = is_playing
 
     def set_camera_options(self, options: Dict[str, Any]) -> None:
         """Set the camera options.
@@ -224,6 +260,18 @@ class CameraReader:
         self._reading_finished = False
         self._buffering = True
         self._read_thread = ReadThread(self._queues, self.stream)
+        self._read_thread.start()
+
+    def start_video_buffering(self, control_queue):
+        """
+        Start the reading frames for video files, the frames are read
+        accordingly to OSC messages.
+        """
+        self._logger.info("Start buffering video file")
+        self._reading_finished = False
+        self._buffering = True
+        self._read_thread = ReadVideoThread(
+                self._queues, self.stream, control_queue)
         self._read_thread.start()
 
     def stop_buffering(self) -> int:
@@ -307,6 +355,67 @@ class ReadThread(QThread):
                 self._logger.debug("could not read frame")
             # time.sleep(1 / self.fps)
             # continue
+        self._logger.info('Finished reading')
+
+    def _write_frame_to_queues(self, frame: np.array):
+        for i_queue in self._queues:
+            i_queue.put(frame)
+
+
+class ReadVideoThread(QThread):
+    """
+    Thread for reading frames from a video file.
+
+    Will consume frames from a VideoCapture stream and push it to
+    multiple queues to be consumed by other threads.
+    """
+
+    stop: bool
+
+    def __init__(self, queues: List[queue.LifoQueue], stream: VideoCapture,
+                 control_queue: queue.Queue):
+        super().__init__()
+        self._logger = logging.getLogger(__name__ + ".ReadVideoThread")
+        self._logger.info('Initializing ReadVideoThread')
+        self._queues = queues
+        self._stream = stream
+        self._frames_read = 0
+        self._control_queue = control_queue
+        self._fps = self._stream.get(cv2.CAP_PROP_FPS)
+        self.is_playing = False
+        self.stop = False
+
+    @property
+    def frames_read(self) -> int:
+        """
+        Get the number of read frames.
+        """
+        return self._frames_read
+
+    def run(self):
+        """Start the worker function of the ReadVideoThread."""
+        self._frames_read = 0
+        self._logger.info('Started reading')
+        while not self.stop:
+            try:
+                msecs = self._control_queue.get(timeout=1/self._fps)
+            except queue.Empty:
+                if not self.is_playing:
+                    continue
+            else:
+                success = self._stream.set(cv2.CAP_PROP_POS_MSEC, msecs)
+                if not success:
+                    self._logger.warning(
+                            "Could not set the position of the video")
+                    if not self.is_playing:
+                        continue
+
+            success, frame = self._stream.read()
+            if success:
+                self._frames_read += 1
+                self._write_frame_to_queues(frame)
+            else:
+                self._logger.debug("could not read frame")
         self._logger.info('Finished reading')
 
     def _write_frame_to_queues(self, frame: np.array):

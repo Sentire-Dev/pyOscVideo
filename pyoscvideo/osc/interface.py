@@ -56,7 +56,7 @@ class OSCInterface(QThread):
         self.server: ThreadingOSCUDPServer = None
         self.client: SimpleUDPClient = None
 
-    def _send_message(self, path: str, args: Sequence[Any]):
+    def _send_message(self, path: str, args: Sequence[Any] = []):
         self._logger.info(
                 f"Sending message '{path}' with args '{args}' to client")
         self.client.send_message(path, args)
@@ -91,6 +91,18 @@ class OSCInterface(QThread):
             self._send_message("/oscVideo/status",
                                (True, "Stopped Recording"))
 
+    def _load_file(self, addr: str, filename: str = ""):
+        self._video_manager.load_file(filename)
+
+    def _set_video_position(self, addr: str, msecs: int):
+        self._video_manager.set_video_position(msecs)
+
+    def _set_video_play(self, addr: str):
+        self._video_manager.set_video_play()
+
+    def _set_video_pause(self, addr: str):
+        self._video_manager.set_video_pause()
+
     def listen(self):
         """
         Initialize the server, start listening.
@@ -110,6 +122,11 @@ class OSCInterface(QThread):
         dispatcher.map("/oscVideo/prepareRecording",
                        self._prepare_recording)
         dispatcher.map("/oscVideo/record", self._record)
+
+        dispatcher.map("/oscVideo/loadFile", self._load_file)
+        dispatcher.map("/oscVideo/setVideoPosition", self._set_video_position)
+        dispatcher.map("/oscVideo/setVideoPlay", self._set_video_play)
+        dispatcher.map("/oscVideo/setVideoPayse", self._set_video_pause)
         return True
 
     def run(self):
