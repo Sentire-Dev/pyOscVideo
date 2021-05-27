@@ -26,8 +26,8 @@ import vlc
 from threading import Thread
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import QMainWindow, QWidget, QFrame, QSlider, QHBoxLayout, QPushButton, \
-    QGridLayout, QAction, QFileDialog, QApplication
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout,
+                             QApplication)
 
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
@@ -41,34 +41,26 @@ class VideoPlayer:
     def __init__(self, mediaplayer):
         self.mediaplayer = mediaplayer
 
-        if sys.platform == "darwin": # for MacOS
-            from PyQt5.QtWidgets import QMacCocoaViewContainer    
+        if sys.platform == "darwin":  # for MacOS
+            from PyQt5.QtWidgets import QMacCocoaViewContainer
             frame = QMacCocoaViewContainer(0)
         else:
             frame = QFrame()
         palette = frame.palette()
-        palette.setColor (QPalette.Window,
-                          QColor(0,0,0))
+        palette.setColor(QPalette.Window,
+                         QColor(0, 0, 0))
         frame.setPalette(palette)
         frame.setAutoFillBackground(True)
- 
+
         self.frame = frame
 
-        if sys.platform.startswith('linux'): # for Linux using the X Server
+        if sys.platform.startswith('linux'):  # for Linux using the X Server
             self.mediaplayer.set_xwindow(self.frame.winId())
-        elif sys.platform == "win32": # for Windows
+        elif sys.platform == "win32":  # for Windows
             self.mediaplayer.set_hwnd(self.frame.winId())
-        elif sys.platform == "darwin": # for MacOS
+        elif sys.platform == "darwin":  # for MacOS
             self.mediaplayer.set_nsobject(int(frame.winId()))
 
-    def play(self):
-        self.mediaplayer.play()
-
-    def pause(self):
-        self.mediaplayer.pause()
-
-    def set_time(self, time):
-        self.mediaplayer.set_time(time)
 
 class Player(QMainWindow):
     """
@@ -104,20 +96,21 @@ class Player(QMainWindow):
 
     def add_video(self, videoPath):
         player = VideoPlayer(self.instance.media_player_new(videoPath))
-        self.gridlayout.addWidget(player.frame, len(self.videos) // 2, len(self.videos) % 2)
+        self.gridlayout.addWidget(player.frame,
+                                  len(self.videos) // 2, len(self.videos) % 2)
         self.videos.append(player)
 
     def play(self):
         for video in self.videos:
-            video.play()
+            video.mediaplayer.play()
 
     def pause(self):
         for video in self.videos:
-            video.pause()
+            video.mediaplayer.pause()
 
     def set_time(self, time):
         for video in self.videos:
-            video.set_time(time)
+            video.mediaplayer.set_time(time)
 
 
 class OSCServer(QThread):
@@ -148,7 +141,7 @@ class OSCServer(QThread):
 
     def set_time(self, address, time):
         # Emits the position_message signal
-        self.set_time_message.emit(time)    
+        self.set_time_message.emit(time)
 
     def run(self):
         """
@@ -162,7 +155,6 @@ class OSCServer(QThread):
 
         server = BlockingOSCUDPServer((self.address, self.port), dispatcher)
         server.serve_forever()
-
 
 
 def main_player():
