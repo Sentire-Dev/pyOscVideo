@@ -75,6 +75,8 @@ class VideoPlayer(QObject):
             self.mediaplayer.set_hwnd(self.frame.winId())
         elif sys.platform == "darwin":  # for MacOS
             self.mediaplayer.set_nsobject(int(frame.winId()))
+        self.mediaplayer.play()
+        self.mediaplayer.set_pause(True)
 
     def _reload_media(self, event):
         self.video_ended.emit()
