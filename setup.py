@@ -5,7 +5,8 @@ setup(name='pyoscvideo',
       packages=find_namespace_packages(include=['pyoscvideo', 'pyoscvideo.*']),
       entry_points={
           'gui_scripts': [
-              'pyoscvideo = pyoscvideo.__main__:main'
+              'pyoscvideo = pyoscvideo.__main__:main',
+              'pyoscvideoplayer = pyoscvideo.player.__main__:main_player'
           ]
       },
       package_data={"": ['*.json']}
