@@ -24,7 +24,7 @@ import argparse
 import vlc
 
 from threading import Thread
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout,
                              QApplication)
@@ -33,26 +33,41 @@ from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 
 
-class VideoPlayer:
+class VideoPlayer(QObject):
     """
     Represents the VLC mediaplayer for a video file and the QT Frame
     where to show this video.
     """
-    def __init__(self, mediaplayer):
-        self.mediaplayer = mediaplayer
+    video_ended = pyqtSignal()
 
-        if sys.platform == "darwin":  # for MacOS
-            from PyQt5.QtWidgets import QMacCocoaViewContainer
-            frame = QMacCocoaViewContainer(0)
-        else:
-            frame = QFrame()
-        palette = frame.palette()
+    def __init__(self, vlc_instance, video_path):
+        super().__init__()
+        self._instance = vlc_instance
+        self._video_path = video_path
+        self._media = self._instance.media_new(video_path)
+        self.mediaplayer = self._instance.media_player_new()
+        self.mediaplayer.set_media(self._media)
+        self.frame = None
+        self._init_frame()
+        self.mediaplayer.event_manager().event_attach(
+                vlc.EventType.MediaPlayerEndReached, self._reload_media)
+        self.video_ended.connect(self.reload_media_cb)
+
+    def _init_frame(self):
+        """
+        Initializes a QFrame object to display the VLC video.
+        """
+        if not self.frame:
+            if sys.platform == "darwin":  # for MacOS
+                from PyQt5.QtWidgets import QMacCocoaViewContainer
+                self.frame = QMacCocoaViewContainer(0)
+            else:
+                self.frame = QFrame()
+        palette = self.frame.palette()
         palette.setColor(QPalette.Window,
                          QColor(0, 0, 0))
-        frame.setPalette(palette)
-        frame.setAutoFillBackground(True)
-
-        self.frame = frame
+        self.frame.setPalette(palette)
+        self.frame.setAutoFillBackground(True)
 
         if sys.platform.startswith('linux'):  # for Linux using the X Server
             self.mediaplayer.set_xwindow(self.frame.winId())
@@ -60,6 +75,18 @@ class VideoPlayer:
             self.mediaplayer.set_hwnd(self.frame.winId())
         elif sys.platform == "darwin":  # for MacOS
             self.mediaplayer.set_nsobject(int(frame.winId()))
+
+    def _reload_media(self, event):
+        self.video_ended.emit()
+
+    def reload_media_cb(self):
+        """
+        Releases old media file when it reaches the end and reloads the same
+        file.
+        """
+        self._media.release()
+        self._media = self._instance.media_new(self._video_path)
+        self.mediaplayer.set_media(self._media)
 
 
 class Player(QMainWindow):
@@ -94,8 +121,8 @@ class Player(QMainWindow):
         self.gridlayout = QGridLayout()
         self.widget.setLayout(self.gridlayout)
 
-    def add_video(self, videoPath):
-        player = VideoPlayer(self.instance.media_player_new(videoPath))
+    def add_video(self, video_path):
+        player = VideoPlayer(self.instance, video_path)
         self.gridlayout.addWidget(player.frame,
                                   len(self.videos) // 2, len(self.videos) % 2)
         self.videos.append(player)
