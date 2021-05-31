@@ -95,7 +95,7 @@ class Player(QMainWindow):
     """
     The main window of the pyOscVideoPlayer, also holds the OSC server thread.
     """
-    def __init__(self, address='127.0.0.1', port=42424):
+    def __init__(self, address='127.0.0.1', port=57221):
         QMainWindow.__init__(self)
         self.setWindowTitle("pyOscVideo Player")
 
@@ -104,13 +104,11 @@ class Player(QMainWindow):
 
         self.create_ui()
         self.isPaused = False
-        self.osc_server = OSCServer()
+        self.osc_server = OSCServer(address, port)
         self.osc_server.play_message.connect(self.play)
         self.osc_server.pause_message.connect(self.pause)
         self.osc_server.add_video_message.connect(self.add_video)
         self.osc_server.set_time_message.connect(self.set_time)
-        self.osc_server.address = address
-        self.osc_server.port = port
         self.osc_server.start()
 
     def create_ui(self):
@@ -151,9 +149,9 @@ class OSCServer(QThread):
     pause_message = pyqtSignal()
     set_time_message = pyqtSignal(int)
 
-    def __init__(self):
-        self.address = "127.0.0.1"
-        self.port = 42424
+    def __init__(self, address="localhost", port=57221):
+        self.address = address
+        self.port = port
         super().__init__()
 
     def add_video(self, address, filepath):
@@ -191,7 +189,7 @@ def main_player():
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--address', default="127.0.0.1",
                         help="Address to listen for OSC messages")
-    parser.add_argument('-p', '--port', default=42424,
+    parser.add_argument('-p', '--port', default=57221,
                         help="Port to listen for OSC messages")
     parsed_args, unparsed_args = parser.parse_known_args()
     app = QApplication(sys.argv)
