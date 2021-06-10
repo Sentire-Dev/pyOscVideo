@@ -19,7 +19,6 @@
 
 import logging
 import platform
-import re
 import subprocess
 import sys
 
@@ -100,8 +99,11 @@ class OSXCameraSelector(BaseCameraSelector):
         camera_dict = {}
         output = subprocess.check_output(
                 ['system_profiler', 'SPCameraDataType'])
-        p = re.compile(r"\s{4}([^\\n]+):\\n\\n")
-        device_list = p.findall(str(output))
+        device_list = []
+        for line in output.decode().splitlines():
+            # Camera order is the camera ID
+            if line.startswith("    ") and line.strip().endswith(":"):
+                device_list.append(line.strip())
         self._logger.info("Found %s cameras", len(device_list))
         for camera_id, camera_name in enumerate(device_list):
             camera_dict[camera_id] = camera_name
