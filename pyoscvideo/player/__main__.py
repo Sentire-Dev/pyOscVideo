@@ -21,6 +21,8 @@
 import sys
 import os.path
 import argparse
+import glob
+
 import vlc
 
 from threading import Thread
@@ -78,6 +80,10 @@ class VideoPlayer(QObject):
         self.mediaplayer.play()
         self.mediaplayer.set_pause(True)
 
+    def clean(self):
+        self.mediaplayer.stop()
+        self.frame.deleteLater()
+
     def _reload_media(self, event):
         self.video_ended.emit()
 
@@ -108,6 +114,7 @@ class Player(QMainWindow):
         self.osc_server.play_message.connect(self.play)
         self.osc_server.pause_message.connect(self.pause)
         self.osc_server.add_video_message.connect(self.add_video)
+        self.osc_server.clean_message.connect(self.clean)
         self.osc_server.set_time_message.connect(self.set_time)
         self.osc_server.start()
 
@@ -126,6 +133,14 @@ class Player(QMainWindow):
         self.gridlayout.addWidget(player.frame,
                                   len(self.videos) // 2, len(self.videos) % 2)
         self.videos.append(player)
+
+    def clean(self):
+        for player in self.videos:
+            self.gridlayout.removeWidget(player.frame)
+            player.clean()
+            del player
+
+        self.videos = []
 
     def play(self):
         for video in self.videos:
@@ -147,6 +162,7 @@ class OSCServer(QThread):
     add_video_message = pyqtSignal(str)
     play_message = pyqtSignal()
     pause_message = pyqtSignal()
+    clean_message = pyqtSignal()
     set_time_message = pyqtSignal(int)
 
     def __init__(self, address="localhost", port=57221):
@@ -157,6 +173,12 @@ class OSCServer(QThread):
     def add_video(self, address, filepath):
         # Emits the add_video_message signal
         self.add_video_message.emit(filepath)
+
+    def add_folder(self, address, folderpath):
+        # Emits the add_video_message signal for each file in video folder
+        videos = glob.glob(os.path.join(folderpath, "*.mov"))
+        for video in videos:
+            self.add_video_message.emit(video)
 
     def play(self, address):
         # Emits the play_message signal
@@ -170,6 +192,10 @@ class OSCServer(QThread):
         # Emits the position_message signal
         self.set_time_message.emit(time)
 
+    def clean(self, address):
+        # Emits the clean_message signal
+        self.clean_message.emit()
+
     def run(self):
         """
         Initialize the OSC server and starts serving.
@@ -179,6 +205,8 @@ class OSCServer(QThread):
         dispatcher.map("/oscVideo/setVideoPause", self.pause)
         dispatcher.map("/oscVideo/setVideoPosition", self.set_time)
         dispatcher.map("/oscVideo/loadFile", self.add_video)
+        dispatcher.map("/oscVideo/loadFolder", self.add_folder)
+        dispatcher.map("/oscVideo/clean", self.clean)
 
         server = BlockingOSCUDPServer((self.address, self.port), dispatcher)
         server.serve_forever()
