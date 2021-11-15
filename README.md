@@ -2,6 +2,8 @@
 
 ## Install notes
 
+* Install VLC for the player functionality
+
 ### Mac
 * Install python 3
 
