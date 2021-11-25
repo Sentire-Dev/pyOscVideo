@@ -29,7 +29,7 @@ from threading import Thread
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout,
-                             QApplication)
+                             QApplication, QLabel, QSizePolicy)
 
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
@@ -128,7 +128,14 @@ class Player(QMainWindow):
         self.gridlayout = QGridLayout()
         self.widget.setLayout(self.gridlayout)
 
+        self.info = QLabel("Waiting for OSC message...")
+        self.info.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.info.setAlignment(Qt.AlignCenter)
+        self.gridlayout.addWidget(self.info)
+
     def add_video(self, video_path):
+        if len(self.videos) == 0:
+            self.gridlayout.removeWidget(self.info)
         player = VideoPlayer(self.instance, video_path)
         self.gridlayout.addWidget(player.frame,
                                   len(self.videos) // 2, len(self.videos) % 2)
