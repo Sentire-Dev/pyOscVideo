@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='pyoscvideo',
-      version='0.1.0',
+      version='0.2',
       author='Sentire',
       author_email='hello@sentire.me',
       description='Synchronized multi-video recorder and player, controllable via OSC',

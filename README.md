@@ -1,40 +1,58 @@
 # pyOscVideo
 
+pyOscVideo is a multi-video recorder and player controllable via OSC.
+
+The main purpose is to record vide from multiple cameras synchronized with another source,
+for instance another software recording an audio source.
+
 ## Install notes
 
-* Install VLC for the player functionality
+You should be able to install directly from PyPI:
 
-### Mac
-* Install python 3
+`pip install pyoscvideo`
 
-* create virtual environment
 
-# macOS/Linux
 
-* You may need to run sudo apt-get install python3-venv first
+Please note that you will need to install VLC for the player functionality.
 
-        python3 -m venv .venv
+## Usage
 
-* activate virtual environment
+After installing you can run it by typing:
 
-        source .venv/bin/activate
+`pyoscvideo` and `pyoscvideoplayer`
 
-* Install dependencies (requirements.txt): 
 
-        pip install -r requirements.txt 
+### Controlling the recorder
 
-* Generate UI code from .ui file
+To control the recorder you need to send the following OSC messages:
 
-        ./generate_ui.sh
+* /oscVideo/prepareRecording
+    Receives as an argument a path where to record the video files.
+    This will prepare all the internal buffers for writing to filesystem but won't start recording.
+    When pyOscVideo is done preparing the buffers it will reply with `/oscVideo/status` and the string 
+    `Prepared Recording` as an argument.
 
-* Install pyOscVideo locally
+* /oscVideo/record
+   the first argument is a boolean that will define if it should start or stop recording.
 
-        pip install -e .
-        
-* run with:
+### Controlling the player
 
-        pyoscvideo
+For the player the following OSC messages are valid:
 
+* /oscVideo/loadFolder
+    Will load all videos inside the folder sent as the first argument
+
+* /oscVideo/setVideoPlay
+    Starts playing the videos
+
+* /oscVideo/setVideoPause
+    Pauses the player
+
+* /oscVideo/setVideoPosition
+    Set all videos to the position specified by the first argument (as time in milliseconds)
+
+* /oscVideo/clean
+    Unloades / removes all loaded videos from the player
 
 ## Development
 
