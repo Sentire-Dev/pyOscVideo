@@ -134,8 +134,7 @@ class Player(QMainWindow):
         self.gridlayout.addWidget(self.info)
 
     def add_video(self, video_path):
-        if len(self.videos) == 0:
-            self.gridlayout.removeWidget(self.info)
+        self.gridlayout.removeWidget(self.info)
         player = VideoPlayer(self.instance, video_path)
         self.gridlayout.addWidget(player.frame,
                                   len(self.videos) // 2, len(self.videos) % 2)
