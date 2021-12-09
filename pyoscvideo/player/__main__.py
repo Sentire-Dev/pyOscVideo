@@ -1,4 +1,4 @@
-# *****************************************************************************
+#*****************************************************************************
 #  Copyright (c) 2021. Pascal Staudt, Bruno Gola                              *
 #                                                                             *
 #  This file is part of pyOscVideo.                                           *
@@ -25,11 +25,11 @@ import glob
 
 import vlc
 
-from threading import Thread
+from threading import Thread, Timer
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout,
-                             QApplication, QLabel, QSizePolicy)
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout, QFileDialog,
+                             QApplication, QLabel, QSizePolicy, QPushButton, QSlider)
 
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
@@ -95,28 +95,52 @@ class VideoPlayer(QObject):
         self._media.release()
         self._media = self._instance.media_new(self._video_path)
         self.mediaplayer.set_media(self._media)
+    
+    def get_length(self):
+        return self.mediaplayer.get_length()
 
 
 class Player(QMainWindow):
     """
     The main window of the pyOscVideoPlayer, also holds the OSC server thread.
     """
-    def __init__(self, address='127.0.0.1', port=57221):
+    def __init__(self, address='127.0.0.1', port=57221, use_osc=True):
         QMainWindow.__init__(self)
         self.setWindowTitle("pyOscVideo Player")
 
+        self.use_osc = use_osc
         self.instance = vlc.Instance()
         self.videos = []
+        self._is_playing = False
+        
+        self.info = None
+        self.play_button = None
+        self.load_button = None
+        self.position_slider = None
+        self._position_tracker = None
 
         self.create_ui()
         self.isPaused = False
-        self.osc_server = OSCServer(address, port)
-        self.osc_server.play_message.connect(self.play)
-        self.osc_server.pause_message.connect(self.pause)
-        self.osc_server.add_video_message.connect(self.add_video)
-        self.osc_server.clean_message.connect(self.clean)
-        self.osc_server.set_time_message.connect(self.set_time)
-        self.osc_server.start()
+
+        if self.use_osc:
+            self.osc_server = OSCServer(address, port)
+            self.osc_server.play_message.connect(self.play)
+            self.osc_server.pause_message.connect(self.pause)
+            self.osc_server.add_video_message.connect(self.add_video)
+            self.osc_server.clean_message.connect(self.clean)
+            self.osc_server.set_time_message.connect(self.set_time)
+            self.osc_server.start()
+
+    @property
+    def _max_length(self):
+        if not self.videos: return 0
+        n = max([ player.get_length() for player in self.videos ])
+        return n
+    
+    def close(self):
+        if self._position_tracker:
+            self._position_tracker.cancel()
+        self.clean()
 
     def create_ui(self):
         """
@@ -127,20 +151,76 @@ class Player(QMainWindow):
 
         self.gridlayout = QGridLayout()
         self.widget.setLayout(self.gridlayout)
+        self._skip_lines = 0
 
-        self.info = QLabel("Waiting for OSC message...")
-        self.info.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.info.setAlignment(Qt.AlignCenter)
-        self.gridlayout.addWidget(self.info)
+        if self.use_osc:
+            self.info = QLabel("Waiting for OSC message...")
+            self.info.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.info.setAlignment(Qt.AlignCenter)
+            self.gridlayout.addWidget(self.info)
+        else:
+            self.play_button = QPushButton("Play")
+            self.play_button.clicked.connect(self._button_play)
+            self.load_button = QPushButton("Load folder")
+            self.load_button.clicked.connect(self._choose_folder)
+            self.position_slider = QSlider(Qt.Horizontal)
+            self.position_slider.setMinimum(0)
+            self.position_slider.setMaximum(10000)
+            self.position_slider.sliderMoved.connect(lambda value: self.set_time(int((value/10000)*self._max_length)))
+            self.position_slider.setSingleStep(0.1)
+            self.gridlayout.addWidget(self.load_button,0,0)
+            self.gridlayout.addWidget(self.play_button,0,1)
+            self.gridlayout.addWidget(self.position_slider,1,0,1,-1)
+            self._skip_lines = 2
+            self.info = QLabel("Waiting for videos...")
+            self.info.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.info.setAlignment(Qt.AlignCenter)
+            self.gridlayout.addWidget(self.info, self._skip_lines, 0, -1, -1)
+            self._position_tracker = Timer(0.5, self._set_position_slider)
+            self._position_tracker.start()
+
+    def _set_position_slider(self):
+        if self.videos:
+            current_time = self.videos[0].mediaplayer.get_time()
+            self.position_slider.setValue((current_time / (self._max_length))*10000)
+        self._position_tracker = Timer(0.5, self._set_position_slider)
+        self._position_tracker.start()
+
+    def _button_play(self):
+        self.play_button.clicked.disconnect(self._button_play)
+        self.play_button.clicked.connect(self._button_pause)
+        self.play_button.setText("Pause")
+        self.play()
+
+    def _button_pause(self):
+        self.play_button.clicked.disconnect(self._button_pause)
+        self.play_button.clicked.connect(self._button_play)
+        self.play_button.setText("Play")
+        self.pause()
+
+    def _choose_folder(self):
+        self.clean()
+        self.add_folder(str(QFileDialog.getExistingDirectory(self, "Select folder")))
+
+    def add_folder(self, folder_path):
+        for video in glob.glob(os.path.join(folder_path, "*.mov")):
+            self.add_video(video)
 
     def add_video(self, video_path):
-        self.gridlayout.removeWidget(self.info)
+        if self.info:
+            self.info.hide()
+            self.info = None
         player = VideoPlayer(self.instance, video_path)
         self.gridlayout.addWidget(player.frame,
-                                  len(self.videos) // 2, len(self.videos) % 2)
+                                  self._skip_lines + len(self.videos) // 2, len(self.videos) % 2)
         self.videos.append(player)
 
     def clean(self):
+        if self.position_slider:
+            if self._is_playing:
+                self._button_pause()
+            self.position_slider.setValue(0)
+
         for player in self.videos:
             self.gridlayout.removeWidget(player.frame)
             player.clean()
@@ -151,10 +231,12 @@ class Player(QMainWindow):
     def play(self):
         for video in self.videos:
             video.mediaplayer.play()
+        self._is_playing = True
 
     def pause(self):
         for video in self.videos:
             video.mediaplayer.pause()
+        self._is_playing = False
 
     def set_time(self, time):
         for video in self.videos:
@@ -225,11 +307,14 @@ def main_player():
                         help="Address to listen for OSC messages")
     parser.add_argument('-p', '--port', default=57221,
                         help="Port to listen for OSC messages")
+    parser.add_argument('-n', '--no-osc', const=True, dest='no_osc', action='store_const',
+                        help="Disables OSC controller, enable GUI controls")
     parsed_args, unparsed_args = parser.parse_known_args()
     app = QApplication(sys.argv)
-    player = Player(parsed_args.address, parsed_args.port)
+    player = Player(parsed_args.address, parsed_args.port, not parsed_args.no_osc)
     player.show()
     player.resize(1280, 960)
+    app.aboutToQuit.connect(player.close)
     sys.exit(app.exec_())
 
 
