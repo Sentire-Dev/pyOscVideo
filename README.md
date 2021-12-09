@@ -1,9 +1,10 @@
 # pyOscVideo
 
-pyOscVideo is a multi-video recorder and player controllable via OSC.
+pyOscVideo is a multi-video recorder and player controllable via [Open Sound Control (OSC)](https://opensoundcontrol.stanford.edu/).
 
-The main purpose is to record vide from multiple cameras synchronized with another source,
-for instance another software recording an audio source.
+The main purpose is to record video from multiple cameras synchronized with another source, for instance another software recording an audio source. Since recording multiple videos in high resolution is a demanding task for the hardware, other tasks (audio recording, sensor data recording, measurements, dsp, etc.) can be performed on a separate computer and synchronized via OSC over the network.
+
+pyOscVideo is developed within the research project ["Social interaction through sound feedback – Sentire"](https://www.musikundmedien.hu-berlin.de/de/musikwissenschaft/systematik/projekte/sentire-soziale-interaktion-durch-klang-feedback)
 
 ## Install notes
 
