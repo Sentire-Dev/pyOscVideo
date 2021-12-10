@@ -27,35 +27,21 @@ After installing you can run it by typing:
 
 ### Controlling the recorder
 
-To control the recorder you need to send the following OSC messages:
-
-* /oscVideo/prepareRecording
-    Receives as an argument a path where to record the video files.
-    This will prepare all the internal buffers for writing to filesystem but won't start recording.
-    When pyOscVideo is done preparing the buffers it will reply with `/oscVideo/status` and the string 
-    `Prepared Recording` as an argument.
-
-* /oscVideo/record
-   the first argument is a boolean that will define if it should start or stop recording.
+| OSC command                  | argument                   | description                                                                                                                   | reply (on success)                    |
+|------------------------------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------|
+| `/oscVideo/prepareRecording` | string, the recording path | Prepares all the internal buffers for writing to filesystem but won't start recording. Sends a reply when finished preparing. | `/oscVideo/status Prepared Recording` |
+| `/oscVideo/record`           | boolean                    | Starts/stops the recording. Sends a reply about the success of starting the rcording                                          | `/oscVideo/status Started Recording`  |                                                                                                                         |                                       |
 
 ### Controlling the player
 
-For the player the following OSC messages are valid:
-
-* /oscVideo/loadFolder
-    Will load all videos inside the folder sent as the first argument
-
-* /oscVideo/setVideoPlay
-    Starts playing the videos
-
-* /oscVideo/setVideoPause
-    Pauses the player
-
-* /oscVideo/setVideoPosition
-    Set all videos to the position specified by the first argument (as time in milliseconds)
-
-* /oscVideo/clean
-    Unloades / removes all loaded videos from the player
+| OSC command                  | argument                  | description                                          |
+|------------------------------|---------------------------|------------------------------------------------------|
+| `/oscVideo/loadFolder`       | string, video folder path | Loads all videos inside the folder path              |
+| `/oscVideo/loadFile`         | string, video file path   | Loads a video                                        |
+| `/oscVideo/setVideoPlay`     |                           | Starts playing the videos                            |
+| `/oscVideo/setVideoPause`    |                           | Pauses the player                                    |
+| `/oscVideo/setVideoPosition` | time in milliseconds      | Sets playback position                               |
+| `/oscVideo/clean`            |                           | Unloades / removes all loaded videos from the player |
 
 ## Development
 
