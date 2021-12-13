@@ -28,8 +28,9 @@ import vlc
 from threading import Thread, Timer
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout, QFileDialog,
-                             QApplication, QLabel, QSizePolicy, QPushButton, QSlider)
+from PyQt5.QtWidgets import (QMainWindow, QWidget, QFrame, QGridLayout,
+                             QFileDialog, QApplication, QLabel,
+                             QSizePolicy, QPushButton, QSlider)
 
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
@@ -95,7 +96,7 @@ class VideoPlayer(QObject):
         self._media.release()
         self._media = self._instance.media_new(self._video_path)
         self.mediaplayer.set_media(self._media)
-    
+
     def get_length(self):
         return self.mediaplayer.get_length()
 
@@ -112,7 +113,7 @@ class Player(QMainWindow):
         self.instance = vlc.Instance()
         self.videos = []
         self._is_playing = False
-        
+
         self.info = None
         self.play_button = None
         self.load_button = None
@@ -133,10 +134,11 @@ class Player(QMainWindow):
 
     @property
     def _max_length(self):
-        if not self.videos: return 0
-        n = max([ player.get_length() for player in self.videos ])
+        if not self.videos:
+            return 0
+        n = max([player.get_length() for player in self.videos])
         return n
-    
+
     def close(self):
         if self._position_tracker:
             self._position_tracker.cancel()
@@ -155,7 +157,8 @@ class Player(QMainWindow):
 
         if self.use_osc:
             self.info = QLabel("Waiting for OSC message...")
-            self.info.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.info.setSizePolicy(QSizePolicy.Expanding,
+                                    QSizePolicy.Expanding)
             self.info.setAlignment(Qt.AlignCenter)
             self.gridlayout.addWidget(self.info)
         else:
@@ -166,14 +169,18 @@ class Player(QMainWindow):
             self.position_slider = QSlider(Qt.Horizontal)
             self.position_slider.setMinimum(0)
             self.position_slider.setMaximum(10000)
-            self.position_slider.sliderMoved.connect(lambda value: self.set_time(int((value/10000)*self._max_length)))
+            self.position_slider.sliderMoved.connect(
+                    lambda value: self.set_time(
+                        int((value/10000)*self._max_length)))
             self.position_slider.setSingleStep(0.1)
-            self.gridlayout.addWidget(self.load_button,0,0)
-            self.gridlayout.addWidget(self.play_button,0,1)
-            self.gridlayout.addWidget(self.position_slider,1,0,1,-1)
+            self.gridlayout.addWidget(self.load_button, 0, 0)
+            self.gridlayout.addWidget(self.play_button, 0, 1)
+            self.gridlayout.addWidget(self.position_slider, 1, 0, 1, -1)
             self._skip_lines = 2
             self.info = QLabel("Waiting for videos...")
-            self.info.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+            self.info.setSizePolicy(
+                    QSizePolicy.Expanding,
+                    QSizePolicy.Expanding)
             self.info.setAlignment(Qt.AlignCenter)
             self.gridlayout.addWidget(self.info, self._skip_lines, 0, -1, -1)
             self._position_tracker = Timer(0.5, self._set_position_slider)
@@ -182,7 +189,8 @@ class Player(QMainWindow):
     def _set_position_slider(self):
         if self.videos:
             current_time = self.videos[0].mediaplayer.get_time()
-            self.position_slider.setValue((current_time / (self._max_length))*10000)
+            self.position_slider.setValue(
+                    (current_time / (self._max_length))*10000)
         self._position_tracker = Timer(0.5, self._set_position_slider)
         self._position_tracker.start()
 
@@ -200,7 +208,8 @@ class Player(QMainWindow):
 
     def _choose_folder(self):
         self.clean()
-        self.add_folder(str(QFileDialog.getExistingDirectory(self, "Select folder")))
+        self.add_folder(str(QFileDialog.getExistingDirectory(
+            self, "Select folder")))
 
     def add_folder(self, folder_path):
         for video in glob.glob(os.path.join(folder_path, "*.mov")):
@@ -211,8 +220,9 @@ class Player(QMainWindow):
             self.info.hide()
             self.info = None
         player = VideoPlayer(self.instance, video_path)
-        self.gridlayout.addWidget(player.frame,
-                                  self._skip_lines + len(self.videos) // 2, len(self.videos) % 2)
+        self.gridlayout.addWidget(
+                player.frame,
+                self._skip_lines + len(self.videos) // 2, len(self.videos) % 2)
         self.videos.append(player)
 
     def clean(self):
@@ -307,11 +317,13 @@ def main_player():
                         help="Address to listen for OSC messages")
     parser.add_argument('-p', '--port', default=57221,
                         help="Port to listen for OSC messages")
-    parser.add_argument('-n', '--no-osc', const=True, dest='no_osc', action='store_const',
+    parser.add_argument('-n', '--no-osc', const=True, dest='no_osc',
+                        action='store_const',
                         help="Disables OSC controller, enable GUI controls")
     parsed_args, unparsed_args = parser.parse_known_args()
     app = QApplication(sys.argv)
-    player = Player(parsed_args.address, parsed_args.port, not parsed_args.no_osc)
+    player = Player(parsed_args.address, parsed_args.port,
+                    not parsed_args.no_osc)
     player.show()
     player.resize(1280, 960)
     app.aboutToQuit.connect(player.close)
