@@ -120,7 +120,7 @@ class Player(QMainWindow):
         self.position_slider = None
         self._position_tracker = None
 
-        self.create_ui()
+        self._create_ui()
         self.isPaused = False
 
         if self.use_osc:
@@ -140,11 +140,14 @@ class Player(QMainWindow):
         return n
 
     def close(self):
+        """
+        Stops the position tracker and frees all loaded videos.
+        """
         if self._position_tracker:
             self._position_tracker.cancel()
         self.clean()
 
-    def create_ui(self):
+    def _create_ui(self):
         """
         Creates the main window with a GridLayout to add videos to.
         """
@@ -212,10 +215,16 @@ class Player(QMainWindow):
             self, "Select folder")))
 
     def add_folder(self, folder_path):
+        """
+        Loads all .mov videos from the specified folder.
+        """
         for video in glob.glob(os.path.join(folder_path, "*.mov")):
             self.add_video(video)
 
     def add_video(self, video_path):
+        """
+        Loads video file from video_path.
+        """
         if self.info:
             self.info.hide()
             self.info = None
@@ -226,6 +235,9 @@ class Player(QMainWindow):
         self.videos.append(player)
 
     def clean(self):
+        """
+        Unloads all videos and remove them from the UI.
+        """
         if self.position_slider:
             if self._is_playing:
                 self._button_pause()
@@ -239,16 +251,25 @@ class Player(QMainWindow):
         self.videos = []
 
     def play(self):
+        """
+        Plays all videos.
+        """
         for video in self.videos:
             video.mediaplayer.play()
         self._is_playing = True
 
     def pause(self):
+        """
+        Pauses all videos.
+        """
         for video in self.videos:
             video.mediaplayer.pause()
         self._is_playing = False
 
     def set_time(self, time):
+        """
+        Sets time as an integer in milliseconds.
+        """
         for video in self.videos:
             video.mediaplayer.set_time(time)
 
