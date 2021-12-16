@@ -14,8 +14,6 @@ You should be able to install directly from PyPI:
 
 `pip install pyoscvideo`
 
-
-
 Please note that you will need to install VLC for the player functionality.
 
 ## Usage
@@ -24,6 +22,10 @@ After installing you can run it by typing:
 
 `pyoscvideo` and `pyoscvideoplayer`
 
+You can control both the recorder and the player via OSC or using the GUI.
+To start the player with GUI control run as:
+
+`$ pyoscvideoplayer --no-osc`
 
 ### Controlling the recorder
 
