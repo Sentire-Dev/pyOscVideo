@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='pyoscvideo',
-      version='0.2',
+      version='0.2.0',
       author='Sentire',
       author_email='hello@sentire.me',
       description='Synchronized multi-video recorder and player, controllable via OSC',
@@ -23,7 +23,7 @@ setup(name='pyoscvideo',
       keywords='osc video player recorder webcam',
       python_requires='>3.7',
       install_requires=[
-          'numpy==1.18.1', 'opencv-python==4.3.0.38', 'PyQt5==5.14.1', 
+          'numpy==1.21.4', 'opencv-python==4.5.4.60', 'PyQt5==5.14.1',
           'PyQt5-sip==12.7.1', 'pyudev==0.22.0', 'six==1.14.0', 'python-osc==1.7.4',
           'PyYAML==5.3.1', 'python-vlc==3.0.12118'
           ],
