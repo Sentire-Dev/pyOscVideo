@@ -1,0 +1,4 @@
+[MASTER]
+extension-pkg-whitelist=PyQt5, cv2
+ignored-modules=PyQt5, cv2
+disable=logging-format-interpolation, logging-fstring-interpolation

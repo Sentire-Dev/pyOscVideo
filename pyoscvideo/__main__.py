@@ -38,7 +38,7 @@ class App(QApplication):
         """
         Init the QApplication.
         """
-        super(App, self).__init__(qt_argv)
+        super().__init__(qt_argv)
 
         # Setup logging mechanism
         setup_logging()
@@ -81,9 +81,9 @@ class App(QApplication):
                 error_message.setWindowTitle("pyOscVideo")
                 error_message.exec_()
             return False
-        else:
-            # Start OSC thread
-            self.osc_interface.start()
+
+        # Start OSC thread
+        self.osc_interface.start()
 
         if gui is not None:
             # Should load gui
